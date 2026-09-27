@@ -1,5 +1,5 @@
 const assert = require("assert");
-const g = require("../src/game");
+const g = require("../../src/game");
 
 // 1. Start round
 let s = g.newState();

@@ -154,11 +154,29 @@ console.log("=== SEPTICA V5 REGRESSION ===");
 // TAKE is called by the player who has the decision; the opponent wins
 // the sequence and therefore draws first.
 function refillCase(startA, startB, deckCount) {
+  const handA = Array(startA).fill("8");
+  const handB = Array(startB).fill("9");
+  const sequence = ["K", "Q"];
+
+  const available = g.makeDeck();
+
+  for (const card of [...handA, ...handB, ...sequence]) {
+    const index = available.indexOf(card);
+
+    if (index === -1) {
+      throw new Error(`Fixture error: ${card} not available`);
+    }
+
+    available.splice(index, 1);
+  }
+
+  const deck = available.slice(0, deckCount);
+
   const s = makeState({
-    handA: Array(startA).fill("8"),
-    handB: Array(startB).fill("9"),
-    deck: Array(deckCount).fill("7"),
-    sequence: ["K", "Q"],
+    handA,
+    handB,
+    deck,
+    sequence,
     turn: 0,
     starter: 0
   });
@@ -177,7 +195,10 @@ function refillCase(startA, startB, deckCount) {
     s.deck.length === 0,
     `deck should be empty, got ${s.deck.length}`
   );
-  assert(g.totalCards(s) === 32, "refill broke the 32-card invariant");
+  assert(
+    g.totalCards(s) === 32,
+    "refill broke the 32-card invariant"
+  );
 }
 
 refillCase(0, 0, 8);

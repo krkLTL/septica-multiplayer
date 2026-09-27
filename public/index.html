@@ -1,0 +1,26 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Șeptică Multiplayer</title>
+<style>body{font-family:system-ui;background:#17351f;color:#f4f1df;margin:0;padding:24px}main{max-width:980px;margin:auto}.panel{background:#22492b;border:1px solid #37663f;border-radius:14px;padding:16px;margin:14px 0}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cards,.sequence{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card,.seq{width:62px;height:88px;background:#fff;color:#111;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:750;cursor:pointer;border:3px solid transparent}.card:hover{border-color:#d6b65c}.disabled{opacity:.4;cursor:not-allowed}.back{background:#345d3d;color:#d9c77c;cursor:default}.seq{cursor:default}.sequence{min-height:100px;background:#193b23;border-radius:10px;padding:15px}button,input{font:inherit;border-radius:8px;padding:10px 14px}button{background:#d6b65c;border:0;font-weight:750;cursor:pointer}button:disabled{opacity:.4}input{width:120px;background:#193b23;color:#fff;border:1px solid #587b60}.hidden{display:none}#log{white-space:pre-wrap;max-height:360px;overflow:auto;font-family:Consolas,monospace}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{background:#193b23;padding:12px;border-radius:10px}@media(max-width:650px){.grid{grid-template-columns:1fr}}</style></head><body><main>
+<h1>Șeptică — Multiplayer 1v1</h1><div id="lobby" class="panel"><button id="create">Creează cameră</button><span> sau </span><input id="roomCode" maxlength="5" placeholder="COD"><button id="join">Intră</button><p id="message"></p></div>
+<div id="game" class="hidden"><div class="panel">
+  <div class="row">
+    <b>Camera:</b><span id="code"></span>
+    <b>Tu:</b><span id="me"></span>
+    <b>Runda:</b><span id="round"></span>
+    <b>Mic:</b><span id="small"></span>
+    <b>Mare:</b><span id="big"></span>
+    <b>Pachet:</b><span id="deck"></span>
+  </div>
+</div>
+<div class="panel"><h2>Adversar <small id="oppCount"></small></h2><div id="opp" class="cards"></div><h2>Secvența</h2><div id="sequence" class="sequence">Nicio secvență activă</div><p id="status"></p></div>
+<div class="panel"><h2>Mâna ta</h2><div id="hand" class="cards"></div><p><button id="take" disabled>Ia-le</button> <button id="next" class="hidden">Rundă nouă</button></p></div>
+<div class="panel grid"><div class="box">Grămada A<br>Cărți: <span id="pileA">0</span><br>Puncte: <span id="pointsA">0</span></div><div class="box">Grămada B<br>Cărți: <span id="pileB">0</span><br>Puncte: <span id="pointsB">0</span></div></div>
+<div class="panel"><h2>Jurnal</h2><div id="log"></div></div></div>
+<script src="/socket.io/socket.io.js"></script><script>
+const socket=io(),$=id=>document.getElementById(id);let me=0;
+function show(){ $("lobby").classList.add("hidden");$("game").classList.remove("hidden") }
+$("create").onclick=()=>socket.emit("create_room");$("join").onclick=()=>socket.emit("join_room",$("roomCode").value);
+socket.on("room_created",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="A"});socket.on("room_joined",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="B"});socket.on("error_message",m=>$("message").textContent=m);
+socket.on("state",s=>{show();$("code").textContent=s.room;$("me").textContent=s.player?"B":"A";$("round").textContent=s.round;$("small").textContent=s.small.join("–");
+$("big").textContent=s.big.join("–");
+$("deck").textContent=s.deck;$("oppCount").textContent=s.opponentCount+" cărți";$("opp").innerHTML=Array.from({length:s.opponentCount},()=>'<div class="card back">?</div>').join("");$("hand").innerHTML=s.hand.map(c=>`<div class="card ${s.status==="playing"&&s.turn===s.player?"":"disabled"}" data-c="${c}">${c}</div>`).join("");[...$("hand").children].forEach(x=>x.onclick=()=>!x.classList.contains("disabled")&&socket.emit("play_card",x.dataset.c));$("sequence").innerHTML=s.sequence.length?s.sequence.map(c=>`<div class="seq">${c}</div>`).join("<span>→</span>"):"Nicio secvență activă";$("status").textContent=s.status==="playing"?(s.turn===s.player?"Este rândul tău.":"Așteaptă adversarul."):(s.roundResult?.draw?"Egalitate — joc dublu.":"Runda s-a terminat.");$("take").disabled=!(s.status==="playing"&&s.turn===s.player&&s.sequence.length>=2);$("next").classList.toggle("hidden",!(s.status==="round_finished"||s.status==="round_draw"));$("next").disabled=s.player!==0;$("pileA").textContent=s.pileCounts[0];$("pileB").textContent=s.pileCounts[1];$("pointsA").textContent=s.pilePoints[0];$("pointsB").textContent=s.pilePoints[1];$("log").textContent=s.log.join("\n")});
+$("take").onclick=()=>socket.emit("take");$("next").onclick=()=>socket.emit("next_round");</script></main></body></html>

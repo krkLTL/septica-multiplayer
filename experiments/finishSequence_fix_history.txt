@@ -1,0 +1,30 @@
+function finishSequence(s, w) {
+  s.piles[w].push(...s.sequence);
+
+  s.sequence = [];
+  s.starter = null;
+
+  if (
+    !s.deck.length &&
+    (!s.hands[0].length || !s.hands[1].length)
+  ) {
+    finishRound(s);
+    assertInvariant(s);
+    return;
+  }
+
+  draw(s, w);
+
+  if (
+    !s.deck.length &&
+    (!s.hands[0].length || !s.hands[1].length)
+  ) {
+    finishRound(s);
+    assertInvariant(s);
+    return;
+  }
+
+  s.turn = w;
+
+  assertInvariant(s);
+}

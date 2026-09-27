@@ -1,0 +1,8 @@
+{
+  "name": "septica-multiplayer-v2",
+  "version": "2.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {"start":"node server.js","test":"node tests/engine.test.js"},
+  "dependencies": {"express":"^5.1.0","socket.io":"^4.8.1"}
+}

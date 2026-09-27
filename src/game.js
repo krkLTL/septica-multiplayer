@@ -302,10 +302,13 @@ function take(s, p) {
   if (
     s.status !== "playing" ||
     s.turn !== p ||
-    s.sequence.length < 2 ||
-    s.starter !== p
+    s.sequence.length < 2
   ) {
     throw Error("INVALID_TAKE");
+  }
+
+  if (s.starter !== p) {
+    throw Error("INVALID_TAKE_ROLE");
   }
 
   const w = 1 - p;

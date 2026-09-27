@@ -54,6 +54,11 @@ function newState() {
     small: [0, 0],
     big: [0, 0],
 
+    // gameStarter = player who started the first round of the current game.
+    // lastSequenceWinner = winner of the most recently resolved sequence.
+    gameStarter: null,
+    lastSequenceWinner: null,
+
     roundDouble: false,
     roundResult: null,
     gameResult: null,
@@ -86,6 +91,11 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
   s.turn = startingPlayer === null
     ? (Math.random() < 0.5 ? 0 : 1)
     : startingPlayer;
+
+  // The first round of a game establishes that game's initial starter.
+  // nextRound() updates this field explicitly when a new game begins.
+  if (s.gameStarter === null) s.gameStarter = s.turn;
+  s.lastSequenceWinner = null;
 
   s.roundDouble = doubleRound;
   s.roundResult = null;
@@ -186,6 +196,7 @@ function finishRound(s) {
 }
 
 function finishSequence(s, w) {
+  s.lastSequenceWinner = w;
   s.piles[w].push(...s.sequence);
   s.sequence = [];
   s.starter = null;
@@ -336,13 +347,21 @@ function nextRound(s) {
   }
 
   if (s.status === "game_finished") {
+    const previousGameWasDouble = Boolean(s.roundResult?.double);
+    const startingPlayer = previousGameWasDouble
+      ? s.gameResult.winner
+      : 1 - s.gameStarter;
+
     s.round = 1;
-    startRound(s, false);
+    s.gameStarter = startingPlayer;
+    startRound(s, false, startingPlayer);
     return;
   }
 
   const wasDraw = s.status === "round_draw";
-  const startingPlayer = s.roundResult?.winner ?? null;
+  const startingPlayer = wasDraw
+    ? s.lastSequenceWinner
+    : s.roundResult.winner;
 
   s.round += 1;
   startRound(s, wasDraw, startingPlayer);

@@ -76,14 +76,16 @@ function finishGame(s, winner, reason = "round") {
   s.status = "game_finished";
 }
 
-function startRound(s, doubleRound = false) {
+function startRound(s, doubleRound = false, startingPlayer = null) {
   s.deck = makeDeck();
   s.hands = [[], []];
   s.sequence = [];
   s.piles = [[], []];
 
   s.starter = null;
-  s.turn = Math.random() < 0.5 ? 0 : 1;
+  s.turn = startingPlayer === null
+    ? (Math.random() < 0.5 ? 0 : 1)
+    : startingPlayer;
 
   s.roundDouble = doubleRound;
   s.roundResult = null;
@@ -340,8 +342,10 @@ function nextRound(s) {
   }
 
   const wasDraw = s.status === "round_draw";
+  const startingPlayer = s.roundResult?.winner ?? null;
+
   s.round += 1;
-  startRound(s, wasDraw);
+  startRound(s, wasDraw, startingPlayer);
 }
 
 module.exports = {

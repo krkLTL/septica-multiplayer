@@ -1,4 +1,4 @@
-ȘEptică — Role/TAKE/concession fix
+Șeptică — Role/TAKE/concession fix
 
 Applied changes:
 1. v002 endgame condition remains correct: the round ends only when deck=0 and BOTH hands are empty.

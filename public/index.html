@@ -1,26 +1,307 @@
-<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Șeptică Multiplayer</title>
-<style>body{font-family:system-ui;background:#17351f;color:#f4f1df;margin:0;padding:24px}main{max-width:980px;margin:auto}.panel{background:#22492b;border:1px solid #37663f;border-radius:14px;padding:16px;margin:14px 0}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cards,.sequence{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card,.seq{width:62px;height:88px;background:#fff;color:#111;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:750;cursor:pointer;border:3px solid transparent}.card:hover{border-color:#d6b65c}.disabled{opacity:.4;cursor:not-allowed}.back{background:#345d3d;color:#d9c77c;cursor:default}.seq{cursor:default}.sequence{min-height:100px;background:#193b23;border-radius:10px;padding:15px}button,input{font:inherit;border-radius:8px;padding:10px 14px}button{background:#d6b65c;border:0;font-weight:750;cursor:pointer}button:disabled{opacity:.4}input{width:120px;background:#193b23;color:#fff;border:1px solid #587b60}.hidden{display:none}#log{white-space:pre-wrap;max-height:360px;overflow:auto;font-family:Consolas,monospace}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{background:#193b23;padding:12px;border-radius:10px}@media(max-width:650px){.grid{grid-template-columns:1fr}}</style></head><body><main>
-<h1>Șeptică — Multiplayer 1v1</h1><div id="lobby" class="panel"><button id="create">Creează cameră</button><span> sau </span><input id="roomCode" maxlength="5" placeholder="COD"><button id="join">Intră</button><p id="message"></p></div>
-<div id="game" class="hidden"><div class="panel">
-  <div class="row">
-    <b>Camera:</b><span id="code"></span>
-    <b>Tu:</b><span id="me"></span>
-    <b>Runda:</b><span id="round"></span>
-    <b>Mic:</b><span id="small"></span>
-    <b>Mare:</b><span id="big"></span>
-    <b>Pachet:</b><span id="deck"></span>
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Șeptică Multiplayer</title>
+<style>
+:root{
+  --felt:#0b4b2a; --felt2:#083b22; --wood:#3a2112; --wood2:#241309;
+  --gold:#d9b85d; --gold2:#f0d982; --ink:#17150f; --paper:#f5f1e5;
+  --muted:#b9b7aa; --green:#20b86b; --blue:#3985d8; --danger:#c96a62;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#0b0d0d;color:#f3efe2;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:18px}
+button,input{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+/* LOBBY */
+#lobby{width:min(560px,100%);padding:30px;border:1px solid #6b5429;border-radius:22px;background:linear-gradient(145deg,#111714,#09100d);box-shadow:0 28px 80px #0009}
+.brand{font-family:Georgia,serif;font-size:34px;color:var(--gold2);margin:0 0 5px}
+.subtitle{color:var(--muted);margin:0 0 28px}
+.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lobby-card{padding:18px;border:1px solid #35463a;border-radius:16px;background:#121a16}
+.lobby-card h2{font:600 20px Georgia,serif;margin:0 0 10px}
+.lobby-card p{color:var(--muted);font-size:14px;min-height:38px}
+input{width:100%;border:1px solid #4c574f;background:#0c110e;color:#fff;padding:12px 13px;border-radius:10px;text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
+.primary,.secondary{width:100%;border-radius:10px;padding:11px 14px;font-weight:750;border:1px solid transparent}
+.primary{background:linear-gradient(#19c16d,#099b52);color:white;box-shadow:0 8px 20px #0a8b4a44}
+.secondary{background:#202a25;color:#e9e4d6;border-color:#48534c}
+.error{color:#e58b83;font-size:13px;margin-top:13px;min-height:18px}
+
+/* TABLE */
+#game{width:min(1180px,100%)}
+.table-shell{position:relative;aspect-ratio:16/10;min-height:650px;padding:28px;border-radius:34px;background:linear-gradient(135deg,#402515,#1d1009 45%,#422714);box-shadow:0 25px 90px #000c,inset 0 0 0 2px #6a4224,inset 0 0 0 9px #180c06;overflow:hidden}
+.table{position:absolute;inset:52px;border-radius:26px;background:radial-gradient(circle at 50% 42%,#0e5b31 0,#094b29 48%,#063a20 100%);box-shadow:inset 0 0 0 1px #4d795b,inset 0 0 55px #0008}
+.table:before{content:"";position:absolute;inset:15px;border:1px solid #9c7b3d55;border-radius:20px;pointer-events:none}
+.topbar{position:absolute;left:68px;right:68px;top:22px;display:flex;justify-content:space-between;align-items:center;z-index:20}
+.room{font-size:12px;color:#bdb7a4;letter-spacing:.08em}.room b{color:#f2dfa0}
+.scoreboard{display:flex;gap:8px;align-items:center}
+.score-pill{background:#111712d9;border:1px solid #6b5934;border-radius:10px;padding:7px 11px;text-align:center;min-width:150px}
+.score-pill small{display:block;color:#9e9a8d;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.score-pill strong{font:700 16px Georgia,serif;color:#f3d77b}
+
+.player{position:absolute;z-index:12;left:50%;transform:translateX(-50%);text-align:center;min-width:170px;padding:7px 14px;border-radius:11px;background:#111613e8;border:1px solid #574a31;box-shadow:0 8px 20px #0005}
+.player.top{top:68px}.player.bottom{bottom:68px}
+.player-name{font:700 17px Georgia,serif}.role{font-size:10px;letter-spacing:.12em;color:#bdb9ad;margin-top:2px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;box-shadow:0 0 8px currentColor}.dot.green{color:#16d36d;background:#16d36d}.dot.blue{color:#428ce0;background:#428ce0}
+.player.active{border-color:#d4b95f;box-shadow:0 0 0 1px #d4b95f33,0 8px 24px #0007}
+.turn-note{position:absolute;left:50%;transform:translateX(-50%);z-index:14;top:148px;font:600 16px Georgia,serif;color:#f1d77d;text-shadow:0 2px 5px #000}
+
+.opponent-hand{position:absolute;left:50%;top:113px;transform:translateX(-50%);display:flex;justify-content:center;z-index:6}
+.back-card{width:58px;height:82px;margin-left:-25px;border-radius:8px;background:repeating-linear-gradient(45deg,#8d2621 0 4px,#a83a32 4px 8px);border:2px solid #eee4d1;box-shadow:0 5px 12px #0007;transform:rotate(var(--r));}
+.back-card:first-child{margin-left:0}
+
+.hand-zone{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;justify-content:center;align-items:flex-end;height:126px;z-index:15;width:min(470px,75%)}
+.hand-card{position:relative;width:84px;height:116px;margin-left:-14px;border:2px solid #e2dac8;border-radius:10px;background:var(--paper);color:#171717;box-shadow:0 10px 18px #0008;display:flex;align-items:flex-start;justify-content:flex-start;padding:9px 10px;font:800 29px Georgia,serif;transition:.16s transform,.16s box-shadow,.16s opacity;user-select:none}
+.hand-card:first-child{margin-left:0}.hand-card:hover{transform:translateY(-12px)!important;box-shadow:0 18px 25px #000a}.hand-card.disabled{opacity:.46;cursor:not-allowed}.hand-card.playable{border-color:#d9bd60;box-shadow:0 0 0 1px #d9bd6040,0 10px 18px #0008}.rank-red{color:#a63b36}
+
+.sequence-area{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:min(680px,70%);height:220px;z-index:10;display:flex;align-items:center;justify-content:center}
+.sequence-stack{position:relative;width:500px;height:170px}
+.seq-card{position:absolute;left:50%;top:50%;width:76px;height:106px;border:2px solid #e1dacb;border-radius:9px;background:var(--paper);color:#171717;display:flex;align-items:flex-start;justify-content:flex-start;padding:8px 9px;font:800 27px Georgia,serif;box-shadow:0 9px 20px #0009;transform:translate(-50%,-50%) translateX(var(--x)) rotate(var(--rot));}
+.sequence-empty{color:#8e9d92;font-size:13px;text-align:center;letter-spacing:.04em}
+
+.pile{position:absolute;z-index:5;bottom:50%;transform:translateY(50%);width:82px;height:110px}.pile.left{left:35px}.pile.right{right:140px}
+.pile-card{position:absolute;left:0;top:0;width:72px;height:98px;border-radius:9px;background:repeating-linear-gradient(45deg,#174a2e 0 5px,#1d5a38 5px 10px);border:2px solid #c8bfa7;box-shadow:0 4px 10px #0008;transform:rotate(var(--rot));}
+.pile-card.top{background:linear-gradient(145deg,#eee9dc,#cfc7b2);color:#202020;display:flex;align-items:flex-start;padding:8px;font:800 23px Georgia,serif}
+.pile-label{position:absolute;top:104px;left:0;color:#a8b1a8;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+
+.deck{position:absolute;right:38px;top:44%;z-index:6;width:62px;height:88px;border-radius:8px;background:repeating-linear-gradient(45deg,#5b2a24 0 5px,#7b3931 5px 10px);border:2px solid #d6cbb5;box-shadow:0 7px 15px #0008}
+.deck-count{position:absolute;right:-8px;bottom:-8px;min-width:25px;height:25px;border-radius:50%;background:#111;color:#e9d17b;border:1px solid #6b5833;display:grid;place-items:center;font-size:11px;font-weight:800}
+
+.action{position:absolute;left:50%;bottom:154px;transform:translateX(-50%);z-index:25}
+.take{border:1px solid #e2bc55;border-radius:10px;padding:12px 35px;background:linear-gradient(#d4a62d,#a9780e);color:#17130a;font-weight:850;font-size:16px;box-shadow:0 8px 20px #0007}.take:hover{filter:brightness(1.08)}.take:disabled{opacity:0;pointer-events:none}
+.status-line{position:absolute;left:50%;top:63%;transform:translate(-50%,-50%);z-index:16;color:#d4d0c2;font-size:13px;text-align:center;min-width:300px;pointer-events:none}
+.status-line strong{color:#f0d67a;font-weight:650}
+
+/* overlays only for actual round/game transitions */
+.overlay{position:absolute;inset:0;z-index:50;background:#030706c9;display:grid;place-items:center;padding:30px}
+.result-card{width:min(460px,90%);padding:28px;border:1px solid #9d7e3e;border-radius:18px;background:linear-gradient(145deg,#111714,#080d0a);box-shadow:0 25px 80px #000b;text-align:center}
+.result-card h2{font:700 27px Georgia,serif;margin:0 0 8px;color:#f0d67a}.result-score{font:700 44px Georgia,serif;margin:12px 0}.result-note{color:#c4c0b4;margin-bottom:18px}.continue{border:0;border-radius:10px;padding:12px 22px;background:#13a95d;color:#fff;font-weight:800}
+
+@media(max-width:800px){
+  body{padding:0;align-items:stretch}.table-shell{min-height:100vh;aspect-ratio:auto;border-radius:0;padding:12px}.table{inset:42px 8px 18px}.topbar{left:22px;right:22px;top:13px}.score-pill{min-width:120px;padding:5px 7px}.score-pill strong{font-size:12px}.player.top{top:54px}.player.bottom{bottom:62px}.opponent-hand{top:100px}.hand-zone{bottom:12px;width:92%;height:108px}.hand-card{width:68px;height:96px;font-size:24px;padding:7px;margin-left:-17px}.sequence-area{width:86%;top:48%;height:190px}.sequence-stack{width:350px}.seq-card{width:62px;height:88px;font-size:22px}.pile.left{left:13px}.pile.right{right:76px}.pile{transform:translateY(50%) scale(.82)}.deck{right:17px;top:41%;transform:scale(.82);transform-origin:right center}.action{bottom:125px}.status-line{top:61%;min-width:240px}.turn-note{top:128px}.lobby-grid{grid-template-columns:1fr}
+}
+</style>
+<style>.take:disabled{opacity:.38!important;cursor:not-allowed;pointer-events:auto}</style>
+</head>
+<body>
+<section id="lobby">
+  <h1 class="brand">Șeptică</h1>
+  <p class="subtitle">Multiplayer 1v1 · intră la masă și joacă.</p>
+  <div class="lobby-grid">
+    <div class="lobby-card">
+      <h2>Creează masă</h2>
+      <p>Deschide o cameră nouă și trimite codul celuilalt jucător.</p>
+      <button id="createBtn" class="primary">Creează camera</button>
+    </div>
+    <div class="lobby-card">
+      <h2>Intră la masă</h2>
+      <p>Introdu codul primit de la celălalt jucător.</p>
+      <input id="roomInput" maxlength="5" placeholder="COD" autocomplete="off">
+      <button id="joinBtn" class="secondary">Intră</button>
+    </div>
   </div>
-</div>
-<div class="panel"><h2>Adversar <small id="oppCount"></small></h2><div id="opp" class="cards"></div><h2>Secvența</h2><div id="sequence" class="sequence">Nicio secvență activă</div><p id="status"></p></div>
-<div class="panel"><h2>Mâna ta</h2><div id="hand" class="cards"></div><p><button id="take" disabled>Ia-le</button> <button id="next" class="hidden">Rundă nouă</button></p></div>
-<div class="panel grid"><div class="box">Grămada A<br>Cărți: <span id="pileA">0</span><br>Puncte: <span id="pointsA">0</span></div><div class="box">Grămada B<br>Cărți: <span id="pileB">0</span><br>Puncte: <span id="pointsB">0</span></div></div>
-<div class="panel"><h2>Jurnal</h2><div id="log"></div></div></div>
-<script src="/socket.io/socket.io.js"></script><script>
-const socket=io(),$=id=>document.getElementById(id);let me=0;
-function show(){ $("lobby").classList.add("hidden");$("game").classList.remove("hidden") }
-$("create").onclick=()=>socket.emit("create_room");$("join").onclick=()=>socket.emit("join_room",$("roomCode").value);
-socket.on("room_created",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="A"});socket.on("room_joined",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="B"});socket.on("error_message",m=>$("message").textContent=m);
-socket.on("state",s=>{show();$("code").textContent=s.room;$("me").textContent=s.player?"B":"A";$("round").textContent=s.round;$("small").textContent=s.small.join("–");
-$("big").textContent=s.big.join("–");
-$("deck").textContent=s.deck;$("oppCount").textContent=s.opponentCount+" cărți";$("opp").innerHTML=Array.from({length:s.opponentCount},()=>'<div class="card back">?</div>').join("");$("hand").innerHTML=s.hand.map(c=>`<div class="card ${s.status==="playing"&&s.turn===s.player?"":"disabled"}" data-c="${c}">${c}</div>`).join("");[...$("hand").children].forEach(x=>x.onclick=()=>!x.classList.contains("disabled")&&socket.emit("play_card",x.dataset.c));$("sequence").innerHTML=s.sequence.length?s.sequence.map(c=>`<div class="seq">${c}</div>`).join("<span>→</span>"):"Nicio secvență activă";$("status").textContent=s.status==="playing"?(s.turn===s.player?"Este rândul tău.":"Așteaptă adversarul."):(s.roundResult?.draw?"Egalitate — joc dublu.":"Runda s-a terminat.");$("take").disabled=!(s.status==="playing"&&s.turn===s.player&&s.sequence.length>=2);$("next").classList.toggle("hidden",!(s.status==="round_finished"||s.status==="round_draw"));$("next").disabled=s.player!==0;$("pileA").textContent=s.pileCounts[0];$("pileB").textContent=s.pileCounts[1];$("pointsA").textContent=s.pilePoints[0];$("pointsB").textContent=s.pilePoints[1];$("log").textContent=s.log.join("\n")});
-$("take").onclick=()=>socket.emit("take");$("next").onclick=()=>socket.emit("next_round");</script></main></body></html>
+  <div id="lobbyError" class="error"></div>
+</section>
+
+<section id="game" class="hidden">
+  <div class="table-shell">
+    <div class="table"></div>
+    <div class="topbar">
+      <div class="room">MASĂ <b id="roomCode">—</b></div>
+      <div class="scoreboard">
+        <div class="score-pill"><small>Partidă</small><strong id="bigScore">0 – 0</strong></div>
+        <div class="score-pill"><small>Runda</small><strong id="smallScore">0 – 0</strong></div>
+      </div>
+    </div>
+
+    <div id="opponentPlayer" class="player top">
+      <div class="player-name"><span class="dot blue"></span><span id="opponentName">Adversar</span></div>
+      <div class="role">TAIETORUL</div>
+    </div>
+    <div id="myPlayer" class="player bottom">
+      <div class="player-name"><span class="dot green"></span>Tu</div>
+      <div id="myRole" class="role">TAIATUL</div>
+    </div>
+
+    <div id="turnNote" class="turn-note"></div>
+    <div id="opponentHand" class="opponent-hand"></div>
+
+    <div id="pileOpponent" class="pile left"><div class="pile-label">Adversar</div></div>
+    <div id="pileMine" class="pile right"><div class="pile-label">Tu</div></div>
+    <div id="deck" class="deck"><div id="deckCount" class="deck-count">24</div></div>
+
+    <div class="sequence-area"><div id="sequenceStack" class="sequence-stack"></div></div>
+    <div id="statusLine" class="status-line"></div>
+
+    <div id="action" class="action"><button id="takeBtn" class="take" disabled>Ia-le</button></div>
+    <div id="hand" class="hand-zone"></div>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="result-card">
+        <h2 id="resultTitle">Runda s-a terminat</h2>
+        <div id="resultScore" class="result-score">0 – 0</div>
+        <div id="resultNote" class="result-note"></div>
+        <button id="continueBtn" class="continue">Continuă</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+  const socket = io();
+  const $ = id => document.getElementById(id);
+  let state = null;
+  let myPlayer = null;
+  let previewSequence = null;
+  let previewTimer = null;
+
+  const lobby = $('lobby');
+  const game = $('game');
+  const lobbyError = $('lobbyError');
+
+  function showError(msg){ lobbyError.textContent = msg || ''; }
+  function showGame(){ lobby.classList.add('hidden'); game.classList.remove('hidden'); }
+  function playerName(p){ return p === myPlayer ? 'Tu' : 'Adversar'; }
+  function rankClass(card){ return ['A','K','Q','J','10','9','8','7'].includes(card) ? '' : ''; }
+
+  function renderBacks(count){
+    const box = $('opponentHand'); box.innerHTML = '';
+    const visible = Math.max(0, Math.min(4, count || 0));
+    for(let i=0;i<visible;i++){
+      const c=document.createElement('div'); c.className='back-card';
+      c.style.setProperty('--r', `${[-4,-2,2,4][i] || 0}deg`);
+      box.appendChild(c);
+    }
+  }
+
+  function renderHand(){
+    const box=$('hand'); box.innerHTML='';
+    const canAct = state && state.status === 'playing' && state.turn === myPlayer;
+    state.hand.forEach((card,i)=>{
+      const b=document.createElement('button'); b.className='hand-card'; b.textContent=card;
+      b.dataset.card=card;
+      const legalHint = canAct;
+      if(!legalHint) b.classList.add('disabled');
+      else b.classList.add('playable');
+      b.style.transform=`translateY(${Math.abs(i-1.5)*2}px) rotate(${[-4,-1,2,4][i]}deg)`;
+      b.addEventListener('click',()=>{ if(canAct) socket.emit('play_card',card); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderSequence(){
+    const box=$('sequenceStack'); box.innerHTML='';
+    const seq=previewSequence || state?.sequence || [];
+    if(!seq.length){ box.innerHTML='<div class="sequence-empty">Masa este liberă</div>'; return; }
+    const rots=[-4,3,-5,4,-3,5,-2,2];
+    const offset=22;
+    seq.forEach((card,i)=>{
+      const el=document.createElement('div'); el.className='seq-card'; el.textContent=card;
+      if(previewSequence) el.classList.add('preview-card');
+      const center=(seq.length-1)/2;
+      el.style.setProperty('--x', `${(i-center)*offset}px`);
+      el.style.setProperty('--rot', `${rots[i%8]}deg`);
+      el.style.zIndex=i+1;
+      box.appendChild(el);
+    });
+  }
+
+  function renderPile(elId,count){
+    const box=$(elId); box.querySelectorAll('.pile-card').forEach(x=>x.remove());
+    if(!count) return;
+    const layers=Math.min(5,Math.max(1,Math.ceil(count/4)));
+    for(let i=0;i<layers;i++){
+      const c=document.createElement('div'); c.className='pile-card';
+      c.style.top=`${i*3}px`; c.style.left=`${i*2}px`; c.style.setProperty('--rot',`${[-3,2,-2,3,-1][i]}deg`); c.style.zIndex=i;
+      box.appendChild(c);
+    }
+  }
+
+  function render(){
+    if(!state) return;
+    showGame();
+    $('roomCode').textContent=state.room;
+    $('bigScore').textContent=`A ${state.big[0]} – ${state.big[1]} B`;
+    $('smallScore').textContent=`A ${state.small[0]} – ${state.small[1]} B`;
+    $('deckCount').textContent=state.deck;
+
+    const opponent=1-myPlayer;
+    $('myRole').textContent = state.sequence.length ? (state.starter===myPlayer ? 'TAIATUL' : 'TAIETORUL') : '—';
+    $('opponentPlayer').classList.toggle('active',state.turn===opponent);
+    $('myPlayer').classList.toggle('active',state.turn===myPlayer);
+
+    const note=$('turnNote');
+    if(state.status==='playing') note.innerHTML = state.turn===myPlayer ? 'Rândul tău' : 'Rândul adversarului';
+    else note.textContent='';
+
+    renderBacks(state.opponentCount);
+    renderHand(); renderSequence();
+    renderPile('pileOpponent',state.pileCounts[opponent]);
+    renderPile('pileMine',state.pileCounts[myPlayer]);
+
+    const takeLegal = state.status==='playing' && state.turn===myPlayer && state.sequence.length>=2 && state.turn===state.player && false;
+    // The engine exposes the authoritative role through starter. Only TAIATUL may take.
+    const canTake = state.status==='playing' && state.turn===myPlayer && state.sequence.length>=2 && state.turn===state.starter;
+    $('takeBtn').disabled=!canTake;
+
+    const status=$('statusLine');
+    if(state.status==='playing'){
+      if(canTake) status.innerHTML='<strong>Poți încheia secvența.</strong>';
+      else if(state.turn===myPlayer) status.textContent='Alege o carte.';
+      else status.textContent='Așteaptă mutarea adversarului.';
+    } else status.textContent='';
+
+    renderOverlay();
+  }
+
+  function renderOverlay(){
+    const overlay=$('overlay');
+    const finished=['round_finished','round_draw','game_finished'].includes(state.status);
+    if(!finished){overlay.classList.add('hidden');return;}
+    overlay.classList.remove('hidden');
+    const rr=state.roundResult;
+    const gr=state.gameResult;
+    if(state.status==='game_finished'){
+      $('resultTitle').textContent='Partida s-a terminat';
+      $('resultScore').textContent=`${state.big[0]} – ${state.big[1]}`;
+      $('resultNote').textContent=`${gr && gr.winner===myPlayer ? 'Ai câștigat partida.' : 'Adversarul a câștigat partida.'}`;
+      $('continueBtn').textContent='Începe următoarea partidă';
+    } else if(state.status==='round_draw'){
+      $('resultTitle').textContent=`Runda ${state.round} — egalitate`;
+      $('resultScore').textContent=`${rr.points[0]} – ${rr.points[1]}`;
+      $('resultNote').textContent='Următoarea rundă este dublă.';
+      $('continueBtn').textContent='Continuă';
+    } else {
+      $('resultTitle').textContent=`Runda ${state.round} s-a terminat`;
+      $('resultScore').textContent=`${rr.points[0]} – ${rr.points[1]}`;
+      const winner=rr.winner;
+      $('resultNote').textContent=winner===myPlayer ? 'Ai câștigat runda.' : 'Adversarul a câștigat runda.';
+      $('continueBtn').textContent='Continuă';
+    }
+    $('continueBtn').disabled = myPlayer!==0;
+    $('continueBtn').title = myPlayer===0 ? '' : 'Așteaptă jucătorul A';
+  }
+
+  $('createBtn').onclick=()=>{showError('');socket.emit('create_room')};
+  $('joinBtn').onclick=()=>{showError('');const code=$('roomInput').value.trim().toUpperCase();if(code.length!==5){showError('Codul trebuie să aibă 5 caractere.');return}socket.emit('join_room',code)};
+  $('roomInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinBtn').click()});
+  $('takeBtn').onclick=()=>socket.emit('take');
+  $('continueBtn').onclick=()=>socket.emit('next_round');
+
+  socket.on('room_created',data=>{myPlayer=data.player;showError(`Camera ${data.code} a fost creată. Trimite codul celuilalt jucător.`)});
+  socket.on('room_joined',data=>{myPlayer=data.player;showError('')});
+  socket.on('state',data=>{state=data;if(myPlayer===null||myPlayer===undefined)myPlayer=data.player;if(data.lastAction&&data.lastAction.sequence&&!data.sequence.length){previewSequence=[...data.lastAction.sequence];clearTimeout(previewTimer);previewTimer=setTimeout(()=>{previewSequence=null;render()},700)}else if(data.sequence.length){previewSequence=null}render()});
+  socket.on('error_message',msg=>showError(msg));
+  socket.on('opponent_disconnected',()=>{
+    if(!state)return;
+    $('statusLine').textContent='Adversarul s-a deconectat.';
+  });
+})();
+</script>
+</body>
+</html>

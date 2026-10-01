@@ -58,6 +58,7 @@ function newState() {
     // lastSequenceWinner = winner of the most recently resolved sequence.
     gameStarter: null,
     lastSequenceWinner: null,
+    lastAction: null,
 
     roundDouble: false,
     roundResult: null,
@@ -81,6 +82,20 @@ function finishGame(s, winner, reason = "round") {
   s.status = "game_finished";
 }
 
+function beginAfterSeptica(s, winner) {
+  s.small[winner] += 2;
+  if (s.small[winner] >= 3) {
+    s.big[winner] += 1;
+    s.small = [0, 0];
+    s.game += 1;
+    s.round = 1;
+    s.gameStarter = winner;
+  } else {
+    s.round += 1;
+  }
+  startRound(s, false, winner);
+}
+
 function startRound(s, doubleRound = false, startingPlayer = null) {
   s.deck = makeDeck();
   s.hands = [[], []];
@@ -96,6 +111,7 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
   // nextRound() updates this field explicitly when a new game begins.
   if (s.gameStarter === null) s.gameStarter = s.turn;
   s.lastSequenceWinner = null;
+  s.lastAction = null;
 
   s.roundDouble = doubleRound;
   s.roundResult = null;
@@ -112,18 +128,7 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
 
   if (sw !== null) {
     s.septica = sw;
-    s.roundResult = {
-      points: [0, 0],
-      winner: sw,
-      draw: false,
-      double: doubleRound,
-      septica: true
-    };
-
-    s.small[sw] += 2;
-
-    if (s.small[sw] >= 3) finishGame(s, sw, "septica");
-    else s.status = "round_finished";
+    beginAfterSeptica(s, sw);
   }
 
   assertInvariant(s);
@@ -213,6 +218,14 @@ function finishSequence(s, w) {
 
   draw(s, w);
 
+  const sw = septicaWinner(s);
+  if (sw !== null) {
+    s.septica = sw;
+    beginAfterSeptica(s, sw);
+    assertInvariant(s);
+    return;
+  }
+
   if (
     !s.deck.length &&
     !s.hands[0].length &&
@@ -233,6 +246,7 @@ function playCard(s, p, c) {
   const index = s.hands[p].indexOf(c);
   s.hands[p].splice(index, 1);
   s.sequence.push(c);
+  s.lastAction = { card: c, sequence: [...s.sequence] };
 
   // First card starts the sequence.
   if (s.sequence.length === 1) {
@@ -312,6 +326,7 @@ function playCard(s, p, c) {
 }
 
 function take(s, p) {
+  s.lastAction = null;
   if (
     s.status !== "playing" ||
     s.turn !== p ||

@@ -48,7 +48,7 @@ function log(r,t){r.log.push(t);if(r.log.length>120)r.log.shift()}
 function traceState(r,label){
   const s=r.state;
   const hand=(p)=>`${s.hands[p].join(" ")} | 7=${s.hands[p].filter(c=>c==="7").length}`;
-  console.log(`[${label}] Partidă: A ${s.big[0]} – ${s.big[1]} B | Runda: A ${s.small[0]} – ${s.small[1]} B | joc=${s.game} runda=${s.round} status=${s.status}`);
+  console.log(`[${label}] Partidă A-B=${s.big[0]}-${s.big[1]} | Runda A-B=${s.small[0]}-${s.small[1]} | joc=${s.game} runda=${s.round} status=${s.status}`);
   console.log(`[${label}] Mâini A(${s.hands[0].length}): ${hand(0)} || B(${s.hands[1].length}): ${hand(1)}`);
   console.log(`[${label}] Pachet=${s.deck.length} | Grămezi A=${s.piles[0].length} (${game.points(s.piles[0])}p) B=${s.piles[1].length} (${game.points(s.piles[1])}p) | turn=${s.turn===null?"-":s.turn?"B":"A"} starter=${s.starter===null?"-":s.starter?"B":"A"}`);
   console.log(`[${label}] Septică=${s.septica===null?"nu":s.septica?"B":"A"} | ultimul câștigător=${s.lastSequenceWinner===null?"-":s.lastSequenceWinner?"B":"A"} | roundResult=${JSON.stringify(s.roundResult)}`);

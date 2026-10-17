@@ -20,8 +20,8 @@ let valid = false;
 
 for (let attempt = 0; attempt < 100 && !valid; attempt++) {
   const possible = s.hands[0].find(card =>
-    s.hands[1].includes(card) ||
-    s.hands[1].includes("7")
+    s.hands[1].some(other => g.rankOf(other) === g.rankOf(card)) ||
+    s.hands[1].some(other => g.rankOf(other) === "7")
   );
 
   if (possible) {
@@ -32,8 +32,8 @@ for (let attempt = 0; attempt < 100 && !valid; attempt++) {
     g.playCard(s, 0, first);
 
     const response =
-      s.hands[1].find(c => c === first) ||
-      s.hands[1].find(c => c === "7");
+      s.hands[1].find(c => g.rankOf(c) === g.rankOf(first)) ||
+      s.hands[1].find(c => g.rankOf(c) === "7");
 
     assert(response);
 
@@ -71,8 +71,8 @@ g.playCard(s, 0, opening);
 
 const potato = s.hands[1].find(
   c =>
-    c !== opening &&
-    c !== "7"
+    g.rankOf(c) !== g.rankOf(opening) &&
+    g.rankOf(c) !== "7"
 );
 
 if (potato) {

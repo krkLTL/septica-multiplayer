@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a2c1a"><title>Studio UI · Șeptică</title>
+  <link rel="stylesheet" href="/studio.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/">Ș <span>Șeptică</span></a><div><b>Studio UI</b><small>Previzualizare și reglaje rapide</small></div><a class="back" href="/">Înapoi la joc</a></header>
+  <main class="studio">
+    <aside class="controls">
+      <div class="intro"><p class="eyebrow">SPAȚIUL TĂU DE ITERAȚIE</p><h1>Reglează masa</h1><p>Schimbă valorile și vezi imediat rezultatul în joc. Setările se aplică doar în browserul tău.</p></div>
+      <section><h2>Preseturi</h2><div class="presets"><button data-preset="quick">Rapid</button><button data-preset="balanced" class="selected">Echilibrat</button><button data-preset="cinematic">Cinematic</button></div></section>
+      <section class="sliders">
+        <label>Lățime maximă a mesei <output data-output="appWidth"></output><input data-setting="appWidth" type="range" min="960" max="2200" step="10"></label>
+        <label>Mărimea cărților <output data-output="handScale"></output><input data-setting="handScale" type="range" min="0.75" max="1.25" step="0.01"></label>
+        <label>Suprapunerea cărților <output data-output="handOverlap"></output><input data-setting="handOverlap" type="range" min="6" max="18" step="1"></label>
+        <label>Mărimea grămezilor <output data-output="pileScale"></output><input data-setting="pileScale" type="range" min="0.75" max="1.2" step="0.01"></label>
+        <label>Ritmul animațiilor <output data-output="motionSpeed"></output><input data-setting="motionSpeed" type="range" min="0.6" max="1.5" step="0.01"></label>
+        <label>Timp de citire a secvenței <output data-output="revealHoldMs"></output><input data-setting="revealHoldMs" type="range" min="0" max="1500" step="50"></label>
+        <label>Durata strângerii cărților <output data-output="collectionMs"></output><input data-setting="collectionMs" type="range" min="300" max="1000" step="10"></label>
+        <label>Stil de mișcare<select data-setting="easing"><option value="smooth">Fluid</option><option value="snappy">Sprinten</option><option value="gentle">Domol</option></select></label>
+      </section>
+      <div class="actions"><button id="save" class="primary">Salvează pe dispozitiv</button><button id="reset">Resetează</button></div>
+      <p id="saveState" class="save-state" aria-live="polite">Modificările se previzualizează automat.</p>
+      <section class="share"><h2>Trimite setările</h2><p>Linkul deschide jocul cu setările tale, pe telefon sau calculator.</p><div class="share-row"><input id="shareLink" readonly aria-label="Link pentru previzualizare"><button id="copyLink">Copiază</button></div><details><summary>Import / export JSON</summary><textarea id="jsonSettings" rows="5" spellcheck="false" aria-label="Setări JSON"></textarea><div class="share-row"><button id="exportJson">Pregătește JSON</button><button id="importJson">Aplică JSON</button></div></details></section>
+    </aside>
+    <section class="preview-area">
+      <div class="preview-toolbar"><div><b>Previzualizare live</b><span id="deviceLabel">Telefon · 390 × 844</span></div><label>Dispozitiv<select id="device"><option value="390x844">Telefon · 390 × 844</option><option value="320x568">Telefon mic · 320 × 568</option><option value="1366x768">Laptop · 1366 × 768</option><option value="1920x1080">Monitor · 1920 × 1080</option></select></label></div>
+      <div class="viewport-wrap"><div id="viewport" class="viewport"><iframe id="gamePreview" title="Previzualizare joc Șeptică" src="/?demo=1&amp;studioPreview=1"></iframe></div></div>
+      <div class="hint">Previzualizarea folosește jocul local. Unele secvențe apar după ce începi o partidă demo.</div>
+    </section>
+  </main>
+  <script src="/ui-tuning.js"></script><script src="/studio.js"></script>
+</body>
+</html>

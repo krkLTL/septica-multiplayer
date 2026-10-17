@@ -1,0 +1,27 @@
+{
+  "name": "Șeptică Multiplayer",
+  "short_name": "Șeptică",
+  "description": "Joc de cărți multiplayer 1v1 în browser.",
+  "lang": "ro",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08160d",
+  "theme_color": "#143a25",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/septica-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/septica-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

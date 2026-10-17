@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Șeptică · 1v1 QA</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:#07110a;color:#f6f0e0;font-family:Inter,system-ui,sans-serif}
+body{min-height:100vh;padding:14px}
+header{max-width:1500px;margin:0 auto 12px;display:flex;align-items:end;justify-content:space-between;gap:14px}
+h1{margin:0;font:700 25px Georgia,serif}.sub{margin:4px 0 0;color:#91a095;font-size:12px}
+.back{color:#e7d188;text-decoration:none;font-weight:800;font-size:12px}
+.qa-grid{max-width:1500px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{min-width:0;border:1px solid rgba(239,215,145,.16);border-radius:15px;overflow:hidden;background:#0b1b10;box-shadow:0 18px 55px rgba(0,0,0,.28)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;border-bottom:1px solid rgba(239,215,145,.10);background:rgba(0,0,0,.16)}
+.panel-head strong{font-size:11px;letter-spacing:.12em;text-transform:uppercase}.panel-head span{color:#85958b;font-size:10px}
+iframe{display:block;width:100%;height:760px;border:0;background:#06110a}
+footer{max-width:1500px;margin:10px auto 0;color:#65766c;font-size:10px}
+@media(max-width:900px){.qa-grid{grid-template-columns:1fr}iframe{height:720px}}
+@media(max-width:600px){body{padding:6px}.qa-grid{gap:8px}iframe{height:760px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Șeptică · test 1v1 real</h1><div class="sub">Două conexiuni Socket.IO reale, lansate automat pe aceeași masă.</div></div>
+  <a class="back" href="/">← Înapoi</a>
+</header>
+<main class="qa-grid">
+  <section class="panel"><div class="panel-head"><strong>Jucător A · HOST</strong><span>creează masa</span></div><iframe title="Jucător A" src="/?qa=host"></iframe></section>
+  <section class="panel"><div class="panel-head"><strong>Jucător B · GUEST</strong><span>intră automat cu codul</span></div><iframe title="Jucător B" src="/?qa=guest"></iframe></section>
+</main>
+<footer>Dacă A creează camera, B primește codul prin BroadcastChannel și îl trimite serverului. Modul este doar pentru QA și nu modifică regulile jocului.</footer>
+</body>
+</html>

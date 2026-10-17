@@ -1,26 +1,1428 @@
-<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Șeptică Multiplayer</title>
-<style>body{font-family:system-ui;background:#17351f;color:#f4f1df;margin:0;padding:24px}main{max-width:980px;margin:auto}.panel{background:#22492b;border:1px solid #37663f;border-radius:14px;padding:16px;margin:14px 0}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.cards,.sequence{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.card,.seq{width:62px;height:88px;background:#fff;color:#111;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:750;cursor:pointer;border:3px solid transparent}.card:hover{border-color:#d6b65c}.disabled{opacity:.4;cursor:not-allowed}.back{background:#345d3d;color:#d9c77c;cursor:default}.seq{cursor:default}.sequence{min-height:100px;background:#193b23;border-radius:10px;padding:15px}button,input{font:inherit;border-radius:8px;padding:10px 14px}button{background:#d6b65c;border:0;font-weight:750;cursor:pointer}button:disabled{opacity:.4}input{width:120px;background:#193b23;color:#fff;border:1px solid #587b60}.hidden{display:none}#log{white-space:pre-wrap;max-height:360px;overflow:auto;font-family:Consolas,monospace}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{background:#193b23;padding:12px;border-radius:10px}@media(max-width:650px){.grid{grid-template-columns:1fr}}</style></head><body><main>
-<h1>Șeptică — Multiplayer 1v1</h1><div id="lobby" class="panel"><button id="create">Creează cameră</button><span> sau </span><input id="roomCode" maxlength="5" placeholder="COD"><button id="join">Intră</button><p id="message"></p></div>
-<div id="game" class="hidden"><div class="panel">
-  <div class="row">
-    <b>Camera:</b><span id="code"></span>
-    <b>Tu:</b><span id="me"></span>
-    <b>Runda:</b><span id="round"></span>
-    <b>Mic:</b><span id="small"></span>
-    <b>Mare:</b><span id="big"></span>
-    <b>Pachet:</b><span id="deck"></span>
+<!doctype html><html lang="ro"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a2c1a"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Șeptică"><meta name="description" content="Șeptică Multiplayer 1v1">
+<link rel="manifest" href="/manifest.json"><link rel="icon" href="/icons/septica-mark.svg" type="image/svg+xml">
+<title>Șeptică Multiplayer</title><style>
+:root{
+  --bg:#070b09;
+  --felt-1:#16452b;
+  --felt-2:#0a2c1a;
+  --felt-3:#071c11;
+  --rail-1:#6d421f;
+  --rail-2:#2b1408;
+  --gold:#d9b85f;
+  --gold-hi:#f4df9c;
+  --ink:#1c1811;
+  --paper:#f6f1e6;
+  --muted:#96a89c;
+  --muted-2:#63766c;
+  --line:rgba(244,223,156,.14);
+  --glass:rgba(4,17,10,.48);
+  --ease:cubic-bezier(.18,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--paper);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:10px;
+  overflow-x:hidden;
+  background:
+    radial-gradient(circle at 50% 8%,rgba(112,173,117,.12),transparent 30%),
+    radial-gradient(circle at 50% 100%,rgba(0,0,0,.36),transparent 48%),
+    linear-gradient(155deg,#07110b,#0a1710 50%,#040806);
+}
+button,input{font:inherit}
+button{border:0}
+.hidden{display:none!important}
+#connection{
+  position:fixed;z-index:100;left:50%;top:12px;transform:translateX(-50%);
+  padding:9px 14px;border-radius:999px;background:rgba(43,28,14,.95);
+  border:1px solid rgba(224,172,93,.42);color:#f2d79e;font-size:11px;font-weight:850;
+  box-shadow:0 16px 36px rgba(0,0,0,.30);backdrop-filter:blur(10px)
+}
+#fxLayer{position:fixed;inset:0;z-index:90;pointer-events:none}
+.fx-toast{
+  position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  padding:10px 15px;border-radius:999px;background:rgba(7,24,14,.94);
+  border:1px solid rgba(241,218,148,.23);color:var(--paper);
+  box-shadow:0 22px 60px rgba(0,0,0,.34);font-size:12px;font-weight:900;
+  backdrop-filter:blur(10px);animation:toastIn 1.1s var(--ease) both
+}
+.fx-toast.gold{color:var(--gold-hi);border-color:rgba(244,223,156,.46)}
+@keyframes toastIn{0%{opacity:0;transform:translate(-50%,-43%) scale(.92)}14%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-63%) scale(.98)}}
+
+.app-frame{
+  width:min(96vw,var(--studio-app-width,1900px),100%);
+  position:relative;isolation:isolate;
+  padding:8px;
+  border-radius:28px;
+  background:linear-gradient(145deg,var(--rail-1),var(--rail-2) 58%,#170903);
+  box-shadow:0 42px 100px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,229,170,.11)
+}
+.app-frame:before{
+  content:"";position:absolute;inset:3px;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(255,240,191,.045)
+}
+.table{
+  min-height:min(900px,calc(100dvh - 20px));
+  position:relative;overflow:hidden;border-radius:21px;
+  background:
+    radial-gradient(ellipse at 50% 32%,rgba(100,163,103,.22),transparent 40%),
+    radial-gradient(ellipse at 50% 88%,rgba(0,0,0,.26),transparent 44%),
+    linear-gradient(150deg,var(--felt-1),var(--felt-2) 68%,var(--felt-3));
+  border:1px solid rgba(244,223,156,.14);
+}
+.table:before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.28;
+  background:
+    radial-gradient(rgba(255,255,255,.045) .7px,transparent .7px) 0 0/6px 6px,
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 5px);
+  mix-blend-mode:soft-light
+}
+.table:after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 45%,transparent 0 47%,rgba(0,0,0,.14) 100%)
+}
+.table-inner{position:relative;z-index:1;min-height:100%;padding:15px 18px 12px}
+
+.lobby-frame{max-width:680px}
+.lobby-table{display:grid;place-items:center}
+.lobby-card{
+  width:min(500px,94%);padding:42px 34px 30px;text-align:center;
+  position:relative;overflow:hidden;border-radius:26px;
+  background:
+    radial-gradient(circle at 50% 0,rgba(244,223,156,.09),transparent 35%),
+    linear-gradient(180deg,rgba(19,59,34,.98),rgba(5,25,14,.99));
+  border:1px solid rgba(244,223,156,.14);
+  box-shadow:0 34px 80px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.045)
+}
+.lobby-card:before{content:"";position:absolute;left:10%;right:10%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.46),transparent)}
+.logo-mark{
+  width:76px;height:76px;margin:0 auto 18px;border-radius:23px;
+  display:grid;place-items:center;color:#241507;font:900 42px Georgia,serif;
+  background:linear-gradient(145deg,#efd37e,#9b6f23);
+  border:1px solid rgba(255,241,193,.32);box-shadow:0 18px 42px rgba(0,0,0,.26)
+}
+.eyebrow,.lobby-kicker{text-transform:uppercase;letter-spacing:.22em;color:var(--gold-hi);font-size:9px;font-weight:950}
+.lobby-card h1{margin:8px 0 10px;font:700 clamp(44px,8vw,68px)/.96 Georgia,serif;letter-spacing:-.03em}
+.lobby-sub{max-width:380px;margin:0 auto 28px;color:var(--muted);font-size:14px;line-height:1.55}
+.lobby-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.join-row{display:flex;gap:8px;margin-top:10px}
+.join-row input{
+  min-width:0;flex:1;height:50px;border-radius:15px;padding:0 16px;text-align:center;
+  letter-spacing:.22em;text-transform:uppercase;font-weight:900;color:var(--paper);
+  background:rgba(2,14,8,.56);border:1px solid var(--line);outline:none
+}
+.join-row input:focus{border-color:rgba(244,223,156,.42);box-shadow:0 0 0 3px rgba(244,223,156,.05)}
+.primary,.secondary{
+  min-height:50px;padding:12px 18px;border-radius:15px;font-weight:950;cursor:pointer;
+  transition:transform .18s var(--ease),filter .18s ease,box-shadow .18s ease,opacity .18s ease;
+  touch-action:manipulation
+}
+.primary{
+  color:#211608;
+  background:linear-gradient(180deg,#f0d483,#b78932);
+  box-shadow:0 12px 24px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.20)
+}
+.secondary{
+  color:var(--paper);background:rgba(4,18,10,.58);border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)
+}
+.primary:hover:not(:disabled),.secondary:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.05)}
+button:disabled{opacity:.34;cursor:default;transform:none!important}
+.message{min-height:18px;margin:12px 0 0;color:#efd287;font-size:11px}
+.lobby-state{margin-top:14px;color:#6f8278;font-size:10px}
+.demo-launch{
+  margin-top:18px;display:inline-flex;align-items:center;justify-content:center;
+  gap:7px;padding:8px 11px;border-radius:999px;color:#84978d;background:rgba(2,13,8,.30);
+  border:1px solid rgba(244,223,156,.10);font-size:10px;font-weight:850;cursor:pointer
+}
+.lobby-utilities{display:flex;justify-content:center;gap:7px}
+
+.game-shell{max-width:min(96vw,var(--studio-app-width,1900px));width:100%}
+.game-table{min-height:min(900px,calc(100dvh - 20px))}
+.game-top{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;
+  margin-bottom:8px
+}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.brand .mini{
+  width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+  background:linear-gradient(145deg,#e6c66f,#a9802c);color:#241707;font:900 20px Georgia,serif;
+  box-shadow:0 8px 18px rgba(0,0,0,.20)
+}
+.brand strong{font-size:14px;letter-spacing:.01em}
+.room-pill{
+  justify-self:end;display:flex;align-items:center;gap:8px;min-width:0;
+  padding:7px 9px 7px 11px;border-radius:999px;background:rgba(3,15,8,.32);
+  border:1px solid rgba(244,223,156,.10);color:#82968c;font-size:10px
+}
+.room-pill b{color:var(--paper);letter-spacing:.14em}
+.room-actions{display:flex;gap:3px}
+.copy-room{background:none;color:var(--gold-hi);padding:2px 4px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:9px}
+
+.score-hud{
+  display:flex;align-items:center;justify-content:center;gap:12px;margin:0 auto 9px;
+  width:max-content;max-width:100%;padding:8px 13px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(5,21,11,.74),rgba(5,21,11,.44));
+  border:1px solid rgba(244,223,156,.13);box-shadow:0 12px 30px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.035)
+}
+.score-side{text-transform:uppercase;letter-spacing:.12em;color:#75887e;font-size:9px;font-weight:950}
+.score-num{font-size:25px;line-height:1;font-weight:950;font-variant-numeric:tabular-nums}
+.score-sep{color:var(--gold-hi);font-weight:900}
+.score-meta{display:flex;align-items:center;gap:7px;margin-left:2px;padding-left:10px;border-left:1px solid rgba(244,223,156,.10);font-size:9px;color:#809188}
+.score-meta b{color:#ded3ad}
+
+.board{
+  position:relative;isolation:isolate;
+  display:grid;
+  grid-template-rows:auto auto 1fr auto auto;
+  gap:9px;
+  min-height:calc(100dvh - 135px);
+  padding:8px 10px 10px;border-radius:26px;
+  background:linear-gradient(145deg,rgba(255,255,255,.026),rgba(0,0,0,.055));
+  box-shadow:inset 0 0 0 1px rgba(244,223,156,.085),0 18px 45px rgba(0,0,0,.075)
+}
+.board:before{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.025);border-radius:22px;pointer-events:none;z-index:0}
+.board>*{position:relative;z-index:1}
+.opponent-panel{display:flex;justify-content:center}
+.player-card{
+  width:min(360px,100%);display:flex;align-items:center;gap:9px;padding:7px 10px;
+  border-radius:14px;background:rgba(4,17,10,.34);border:1px solid rgba(244,223,156,.10);
+  box-shadow:0 11px 25px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.03)
+}
+.avatar,.self-avatar{
+  width:33px;height:33px;flex:0 0 33px;border-radius:50%;display:grid;place-items:center;
+  color:var(--gold-hi);font-weight:950;background:linear-gradient(145deg,#76572f,#2d1b0d);
+  border:1px solid rgba(244,223,156,.26);box-shadow:0 6px 16px rgba(0,0,0,.20)
+}
+.player-copy,.self-copy{min-width:0}
+.player-kicker,.self-kicker{display:block;text-transform:uppercase;letter-spacing:.14em;color:#80948a;font-size:8px;font-weight:850}
+.player-value{font-size:12px;font-weight:850;margin-top:1px}
+.turn-dot,.self-turn-dot{
+  margin-left:auto;width:8px;height:8px;border-radius:50%;background:#5d6d63;
+  box-shadow:0 0 0 4px rgba(93,109,99,.09)
+}
+.turn-dot.active,.self-turn-dot.active{
+  background:#f0d37c;box-shadow:0 0 0 4px rgba(240,211,124,.10),0 0 16px rgba(240,211,124,.42)
+}
+.self-player-card{
+  width:min(320px,88%);margin:0 auto 1px;padding:6px 10px;
+  display:flex;align-items:center;gap:9px;border-radius:14px;
+  background:rgba(4,17,10,.34);border:1px solid rgba(244,223,156,.10);
+  transition:transform .18s var(--ease),border-color .18s ease,box-shadow .18s ease
+}
+.self-player-card.active{
+  transform:translateY(-1px);border-color:rgba(244,223,156,.28);
+  box-shadow:0 10px 28px rgba(0,0,0,.13),0 0 0 3px rgba(244,223,156,.028),inset 0 1px 0 rgba(255,255,255,.03)
+}
+
+.center-stage{
+  position:relative;min-height:0;display:grid;align-content:center;justify-items:center;
+  grid-template-rows:auto auto 1fr auto;gap:8px;padding:2px 0
+}
+.center-stage:before{
+  content:"";position:absolute;width:min(640px,94%);height:64%;left:50%;top:50%;transform:translate(-50%,-50%);
+  border-radius:50%;background:radial-gradient(ellipse,rgba(100,168,106,.10),transparent 70%);
+  pointer-events:none
+}
+.table-mark{
+  position:absolute;z-index:0;width:min(560px,86%);left:50%;top:49%;transform:translate(-50%,-50%);
+  opacity:.20;filter:drop-shadow(0 18px 30px rgba(0,0,0,.16));pointer-events:none
+}
+.center-stage>*:not(.table-mark){position:relative;z-index:1}
+.opponent-hand{min-height:66px;display:flex;justify-content:center;align-items:center}
+.opponent-hand .cards{justify-content:center}
+.cards{display:flex;align-items:center;justify-content:center;gap:clamp(7px,1.1vw,11px);flex-wrap:nowrap}
+.card{
+  --card-w:82px;
+  position:relative;width:var(--card-w);aspect-ratio:2.5/3.5;flex:0 0 auto;
+  border-radius:11px;overflow:visible;background:transparent;cursor:pointer;perspective:900px;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:transform .20s var(--ease),filter .20s ease
+}
+.card:before{
+  content:"";position:absolute;inset:1px;border-radius:inherit;z-index:0;
+  background:linear-gradient(145deg,rgba(255,255,255,.18),transparent 23%,rgba(0,0,0,.10));
+  box-shadow:0 17px 24px rgba(0,0,0,.30),0 4px 7px rgba(0,0,0,.18),inset 0 0 0 1px rgba(255,255,255,.18);
+  pointer-events:none
+}
+.card:after{
+  content:"";position:absolute;inset:2px;border-radius:inherit;z-index:3;pointer-events:none;
+  background:linear-gradient(115deg,rgba(255,255,255,.20),transparent 24%,transparent 76%,rgba(255,255,255,.05));
+  opacity:.65;mix-blend-mode:screen
+}
+.card-art,.back-card-art{
+  position:absolute;inset:0;z-index:2;width:100%;height:100%;display:block;
+  object-fit:fill;border-radius:10px;user-select:none;-webkit-user-drag:none;
+  filter:drop-shadow(0 12px 10px rgba(0,0,0,.22)) drop-shadow(0 3px 2px rgba(0,0,0,.16));
+  transition:transform .20s var(--ease),filter .20s ease
+}
+.card:hover:not(.disabled),.card:focus-visible{transform:translateY(-8px) scale(1.015)}
+.card:hover:not(.disabled) .card-art{transform:translateY(-2px);filter:drop-shadow(0 19px 20px rgba(0,0,0,.30)) drop-shadow(0 4px 3px rgba(0,0,0,.16))}
+.card:focus-visible{outline:2px solid var(--gold-hi);outline-offset:5px;border-radius:12px}
+.card.active-card .card-art{filter:drop-shadow(0 15px 17px rgba(0,0,0,.28)) drop-shadow(0 0 9px rgba(240,211,124,.22))}
+.card.forced-choice{z-index:9!important;filter:drop-shadow(0 0 13px rgba(255,224,133,.72)) drop-shadow(0 12px 18px rgba(0,0,0,.35));animation:forcedChoice 1.25s ease-in-out infinite}
+.card.forced-choice:before{box-shadow:0 0 0 2px rgba(255,229,147,.95),0 0 0 7px rgba(255,210,91,.18),0 22px 35px rgba(0,0,0,.34),inset 0 0 0 2px rgba(255,255,255,.7)}
+@keyframes forcedChoice{0%,100%{translate:0 0}50%{translate:0 -5px}}
+.card.disabled{cursor:default;opacity:.70;pointer-events:none}
+.card.disabled .card-art{filter:grayscale(.10) saturate(.76) brightness(.86) drop-shadow(0 6px 8px rgba(0,0,0,.16))}
+.card.pressing{transform:translateY(2px) scale(.985)!important}
+.card.pressing .card-art{transform:translateY(1px)!important;filter:brightness(.98) drop-shadow(0 5px 7px rgba(0,0,0,.20))!important}
+.table-assets{
+  width:min(760px,95%);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;
+  filter:drop-shadow(0 14px 20px rgba(0,0,0,.10))
+}
+.pile-display{
+  position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;
+  min-width:0;padding:8px 10px;border-radius:16px;background:rgba(3,16,8,.28);
+  border:1px solid rgba(244,223,156,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  transition:transform .18s var(--ease),border-color .18s ease,background .18s ease
+}
+.pile-display.right{text-align:right}
+.pile-stack{position:relative;width:50px;height:68px;flex:0 0 auto}
+.pile-stack:after{
+  content:"";position:absolute;inset:2px;border-radius:7px;background:url("/cards/card-back.svg") center/cover no-repeat;
+  box-shadow:0 9px 16px rgba(0,0,0,.20)
+}
+.pile-letter{
+  width:27px;height:27px;border-radius:9px;display:grid;place-items:center;
+  color:var(--gold-hi);font-weight:950;font-size:10px;background:rgba(217,184,95,.10);
+  border:1px solid rgba(244,223,156,.18)
+}
+.pile-copy{min-width:0}.pile-copy small,.deck-copy small{display:block;color:#6e8378;text-transform:uppercase;letter-spacing:.14em;font-size:7px}.pile-copy strong{display:block;font-size:16px;margin-top:1px;font-weight:950}.pile-display em{font-style:normal;color:var(--gold-hi);font-size:10px;font-weight:900}
+.pile-display.right .pile-stack{order:3}.pile-display.right .pile-letter{order:2}.pile-display.right .pile-copy{order:1}
+.deck-display{
+  display:grid;justify-items:center;gap:4px;padding:2px 3px;min-width:94px
+}
+.deck-stack{position:relative;width:78px;height:108px}
+.deck-stack span{
+  position:absolute;inset:0;border-radius:10px;background:url("/cards/card-back.svg") center/cover no-repeat;
+  border:1px solid rgba(244,223,156,.18);box-shadow:0 13px 25px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.06);
+  transition:transform .20s var(--ease),filter .20s ease
+}
+.deck-stack span:nth-child(1){transform:translate(9px,-7px) rotate(4deg);opacity:.40}
+.deck-stack span:nth-child(2){transform:translate(4px,-3px) rotate(1.7deg);opacity:.66}
+.deck-stack span:nth-child(3){transform:none}
+.deck-display:hover .deck-stack span:nth-child(1){transform:translate(11px,-9px) rotate(4deg)}
+.deck-display:hover .deck-stack span:nth-child(2){transform:translate(5px,-4px) rotate(1.7deg)}
+.deck-copy{text-align:center}.deck-copy strong{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+
+
+
+
+.table-label{
+  color:#71857a;text-transform:uppercase;letter-spacing:.18em;font-size:8px;font-weight:900;
+  display:flex;align-items:center;gap:8px
+}
+.table-label:before,.table-label:after{content:"";width:min(100px,13vw);height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.16))}
+.turn-ribbon{
+  display:flex;align-items:center;gap:6px;width:max-content;max-width:88%;min-height:22px;
+  padding:4px 9px;border-radius:999px;background:rgba(3,16,9,.28);
+  border:1px solid rgba(244,223,156,.10);color:#7d9086;text-transform:uppercase;letter-spacing:.12em;
+  font-size:8px;font-weight:900;transition:background .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease
+}
+.turn-ribbon.active{color:var(--gold-hi);border-color:rgba(244,223,156,.28);background:rgba(49,44,24,.22);box-shadow:0 10px 23px rgba(0,0,0,.12)}
+.turn-ribbon-dot{width:6px;height:6px;border-radius:50%;background:#66756c;box-shadow:0 0 0 3px rgba(102,117,108,.08)}
+.turn-ribbon.active .turn-ribbon-dot{background:#eed177;box-shadow:0 0 0 3px rgba(238,209,119,.10),0 0 13px rgba(238,209,119,.38)}
+
+.sequence-wrap{width:100%;display:flex;justify-content:center}
+.sequence{
+  width:min(620px,96%);min-height:126px;padding:17px 20px;display:flex;align-items:center;justify-content:center;gap:9px;
+  border-radius:22px;background:linear-gradient(180deg,rgba(2,14,8,.28),rgba(2,14,8,.14));
+  border:1px solid rgba(244,223,156,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 14px 30px rgba(0,0,0,.08);
+  backdrop-filter:blur(2px);position:relative
+}
+.sequence:before{content:"";position:absolute;inset:7px;border-radius:15px;border:1px solid rgba(255,255,255,.022);pointer-events:none}
+.seq{
+  width:71px;aspect-ratio:2.5/3.5;flex:0 0 auto;position:relative;border-radius:10px;overflow:visible
+}
+.seq .card-art{filter:drop-shadow(0 10px 11px rgba(0,0,0,.22))}
+.seq.fresh{animation:seqFresh .44s var(--ease) both}
+@keyframes seqFresh{0%{opacity:0;transform:translateY(-20px) rotate(-5deg) scale(.90)}68%{opacity:1;transform:translateY(3px) rotate(1deg) scale(1.025)}100%{opacity:1;transform:none}}
+.seq.collecting{animation:seqCollect 1.8s cubic-bezier(.18,.72,.18,1) both;animation-delay:var(--collect-delay,0ms)}
+@keyframes seqCollect{
+  0%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}
+  70%{opacity:1;transform:translate(var(--collect-x),22px) rotate(6deg) scale(.84)}
+  100%{opacity:0;transform:translate(var(--collect-x),34px) rotate(10deg) scale(.72)}
+}
+.collection-label{
+  position:absolute;top:7px;left:50%;transform:translateX(-50%);white-space:nowrap;
+  padding:3px 8px;border-radius:999px;background:rgba(3,16,9,.48);border:1px solid rgba(244,223,156,.10);
+  color:#c9bb8b;font-size:8px;text-transform:uppercase;letter-spacing:.14em;font-weight:900
+}
+.seq-arrow{color:rgba(244,223,156,.44);font-size:12px}
+
+.action-row{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:1px}
+.action-row:before{content:"";width:38%;height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.10),transparent)}
+.status{min-height:20px;color:var(--paper);font-size:14px;font-weight:900;text-align:center;transition:transform .2s var(--ease),opacity .2s ease}
+.status.status-pop{animation:statusPop .34s var(--ease) both}
+@keyframes statusPop{0%{opacity:.45;transform:translateY(3px)}100%{opacity:1;transform:none}}
+.status-sub{color:#82948b;font-size:10px;min-height:13px;text-align:center}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.actions .primary,.actions .secondary{min-width:150px}
+
+.hand-zone{padding-top:5px}
+.hand-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.12),transparent);margin:0 6% 6px}
+.hand-label{text-align:center;color:#81938a;text-transform:uppercase;letter-spacing:.18em;font-size:8px;font-weight:900;margin-bottom:5px}
+.my-hand{padding:10px 10px 14px;justify-content:center;align-items:flex-end;gap:0;overflow:visible}
+.my-hand .card{--card-w:92px;margin-left:-12px}
+.my-hand .card:first-child{margin-left:0}
+.my-hand .card:nth-child(1){--fan:-3.5deg;z-index:1}.my-hand .card:nth-child(2){--fan:-1.2deg;z-index:2}.my-hand .card:nth-child(3){--fan:1.2deg;z-index:3}.my-hand .card:nth-child(4){--fan:3.5deg;z-index:4}
+.my-hand .card:not(.pressing){transform:rotate(var(--fan,0deg))}
+.my-hand .card.active-card:hover:not(.disabled){transform:translateY(-14px) rotate(0deg) scale(1.02);z-index:8}
+
+.dev-tools{margin-top:2px}
+.dev-tools summary{cursor:pointer;text-align:center;color:#5f7268;font-size:9px}
+.dev-log{max-height:105px;overflow:auto;margin-top:6px;padding:8px;border-radius:10px;background:rgba(0,0,0,.14);color:#82948b;font:9px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+.result-overlay{
+  position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:18px;
+  background:rgba(1,8,4,.58);backdrop-filter:blur(5px)
+}
+.result-card{
+  width:min(420px,92%);padding:28px;border-radius:23px;text-align:center;
+  background:linear-gradient(180deg,rgba(18,57,33,.98),rgba(4,22,12,.99));
+  border:1px solid rgba(244,223,156,.22);box-shadow:0 36px 90px rgba(0,0,0,.42);
+  animation:resultIn .42s var(--ease) both;position:relative;overflow:hidden
+}
+.result-card:before{content:"";position:absolute;left:10%;right:10%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.46),transparent)}
+.result-title{font:700 38px/1 Georgia,serif;margin:9px 0}.result-score{font-size:42px;font-weight:950;font-variant-numeric:tabular-nums}.result-note{margin:6px 0 20px;color:var(--muted);font-size:12px}
+@keyframes resultIn{0%{opacity:0;transform:translateY(10px) scale(.95)}100%{opacity:1;transform:none}}
+
+.value-pop{animation:valuePop .42s var(--ease) both}
+@keyframes valuePop{0%{transform:scale(1)}45%{transform:scale(1.18);color:var(--gold-hi)}100%{transform:scale(1)}}
+.score-change{animation:scoreChange .42s var(--ease) both}
+@keyframes scoreChange{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+
+.demo-mode-badge{
+  position:fixed;z-index:60;left:50%;bottom:14px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;
+  background:rgba(6,19,11,.92);border:1px solid rgba(244,223,156,.16);
+  color:#d6c58e;font-size:9px;font-weight:900;backdrop-filter:blur(8px)
+}
+.demo-step{border:0;border-radius:999px;padding:5px 8px;background:rgba(244,223,156,.10);color:#f0dc9c;font-size:8px;font-weight:900;cursor:pointer}
+
+@media(max-width:900px){
+  body{padding:0}.app-frame{padding:4px;border-radius:18px}.table{border-radius:14px;min-height:100dvh}.table-inner{padding:10px 9px 7px}
+  .game-top{grid-template-columns:auto 1fr auto;gap:7px}
+  .brand strong{display:none}
+  .brand .mini{width:31px;height:31px;font-size:18px;border-radius:9px}
+  .room-pill{font-size:9px;padding:6px 7px}
+  .score-hud{margin-bottom:6px;padding:8px 11px;border-radius:14px;gap:9px}
+  .score-num{font-size:23px}.score-side{font-size:8px}.score-meta{font-size:8px;padding-left:8px}
+  .board{gap:7px;min-height:calc(100dvh - 104px)}
+  .player-card{width:94%;padding:6px 8px}.avatar,.self-avatar{width:30px;height:30px;flex-basis:30px}
+  .player-value{font-size:11px}.player-kicker,.self-kicker{font-size:7px}
+  .center-stage{gap:8px}
+  .opponent-hand{min-height:54px}
+  .table-assets{gap:6px;width:100%}
+  .pile-display{grid-template-columns:auto 1fr auto;gap:6px;padding:6px 6px;border-radius:13px}
+  .pile-stack{width:38px;height:52px}.pile-letter{width:24px;height:24px;font-size:9px}.pile-copy small,.deck-copy small{font-size:6px}.pile-copy strong{font-size:13px}.pile-display em{font-size:8px}
+  .deck-stack{width:68px;height:94px}.deck-display{min-width:78px}
+  .table-label{font-size:7px}.table-label:before,.table-label:after{width:22px}
+  .turn-ribbon{min-height:21px;padding:4px 8px;font-size:7px}
+  .sequence{min-height:100px;width:97%;padding:12px 8px;gap:5px;border-radius:18px}
+  .seq{width:58px}.seq-arrow{font-size:10px}
+  .status{font-size:12px}.status-sub{font-size:9px}.actions{width:100%}.actions .primary,.actions .secondary{min-width:0;flex:1}
+  .self-player-card{width:78%;padding:5px 8px}
+  .hand-zone{padding-top:2px}.my-hand{padding:7px 10px 11px}.my-hand .card{--card-w:78px;margin-left:-14px}.my-hand .card:first-child{margin-left:0}
+  .dev-tools{display:none}
+  .lobby-card{width:93%;padding:34px 20px 24px}.logo-mark{width:66px;height:66px;font-size:36px;border-radius:20px}
+  .lobby-buttons{grid-template-columns:1fr}.lobby-utilities{display:grid;grid-template-columns:1fr}.demo-launch{width:100%}.join-row{flex-direction:column}.lobby-card h1{font-size:50px}
+}
+@media(max-width:370px){
+  .score-meta{display:none}.pile-display{gap:5px}.deck-stack{width:62px;height:86px}.my-hand .card{--card-w:72px;margin-left:-15px}.sequence{min-height:94px}.seq{width:54px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+}
+</style>
+<style id="next-level-table">
+:root{--felt-1:#123c25;--felt-2:#09291a;--felt-3:#051a10;--rail-1:#58371e;--rail-2:#1f0e06;--gold:#c9a85a;--gold-hi:#f4e2ae;--paper:#fbf8ef;--muted:#8fa298}
+html,body{background:#030604}
+body{padding:0;min-height:100dvh;background:radial-gradient(ellipse at 50% 35%,rgba(70,126,83,.11),transparent 38%),linear-gradient(155deg,#06100a,#030806 70%)}
+.app-frame{padding:6px;border-radius:26px;box-shadow:0 34px 90px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,240,196,.12)}
+.table{border-radius:19px;min-height:calc(100dvh - 12px);background:radial-gradient(ellipse at 50% 39%,rgba(92,153,96,.18),transparent 44%),radial-gradient(ellipse at 50% 100%,rgba(0,0,0,.36),transparent 55%),linear-gradient(145deg,var(--felt-1),var(--felt-2) 62%,var(--felt-3));border-color:rgba(244,223,156,.17)}
+.table:before{opacity:.2;background:radial-gradient(rgba(255,255,255,.06) .55px,transparent .7px) 0 0/7px 7px,repeating-linear-gradient(90deg,rgba(255,255,255,.008) 0 1px,transparent 1px 4px)}
+.table:after{background:radial-gradient(circle at 50% 42%,transparent 0 38%,rgba(0,0,0,.12) 78%,rgba(0,0,0,.28) 100%)}
+.table-inner{padding:12px 14px 8px}
+.game-top{margin-bottom:5px}
+.brand .mini{box-shadow:0 8px 20px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.22)}
+.score-hud{margin-bottom:7px;background:linear-gradient(180deg,rgba(2,13,8,.78),rgba(2,13,8,.36));border-color:rgba(244,223,156,.15)}
+.board{gap:7px;min-height:calc(100dvh - 140px)}
+.player-card,.self-player-card{background:rgba(2,13,8,.30);border-color:rgba(244,223,156,.10)}
+.player-card.active,.self-player-card.active{border-color:rgba(244,223,156,.28);box-shadow:0 12px 30px rgba(0,0,0,.18),0 0 0 2px rgba(244,223,156,.03),inset 0 1px 0 rgba(255,255,255,.05)}
+.center-stage{min-height:0;width:100%;padding:0;gap:8px}
+.center-stage:before{width:min(820px,105%);height:70%;background:radial-gradient(ellipse,rgba(111,170,110,.15),transparent 69%)}
+.table-mark{width:min(640px,88%);opacity:.115;filter:drop-shadow(0 22px 36px rgba(0,0,0,.20))}
+.board{padding:8px 10px 10px;border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(0,0,0,.055));box-shadow:inset 0 0 0 1px rgba(244,223,156,.09),0 20px 48px rgba(0,0,0,.08)}
+.board:before{inset:4px;border-color:rgba(255,255,255,.03);border-radius:22px}
+.table-assets{position:relative;display:block;width:min(820px,98%);min-height:174px;height:174px;filter:none}
+.pile-display{position:absolute;top:51px;width:164px;padding:8px 10px;border-radius:18px;background:linear-gradient(180deg,rgba(2,15,9,.42),rgba(2,15,9,.20));box-shadow:0 18px 34px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.035)}
+.pile-display:first-child{left:0}.pile-display.right{right:0}
+.pile-stack{width:56px;height:78px}.pile-stack:after{box-shadow:0 12px 19px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.14)}
+.pile-letter{width:29px;height:29px;border-radius:10px;background:rgba(201,168,90,.08);border-color:rgba(244,223,156,.22)}
+.pile-copy strong{font-size:17px}
+.deck-display{position:absolute;top:0;left:50%;transform:translateX(-50%);min-width:132px;z-index:3}
+.deck-stack{width:104px;height:145px}
+.deck-stack span{border-radius:12px;border-color:rgba(244,223,156,.25);box-shadow:0 18px 32px rgba(0,0,0,.34),0 3px 5px rgba(0,0,0,.18),inset 0 0 0 1px rgba(255,255,255,.10)}
+.deck-stack span:nth-child(1){transform:translate(13px,-10px) rotate(4.6deg);opacity:.44}.deck-stack span:nth-child(2){transform:translate(6px,-5px) rotate(2deg);opacity:.72}
+.deck-copy{margin-top:2px}.deck-copy strong{font-size:15px}
+.table-label{display:none}
+.turn-ribbon{min-height:22px;padding:5px 10px;background:rgba(2,14,8,.24);border-color:rgba(244,223,156,.12);box-shadow:0 12px 26px rgba(0,0,0,.08)}
+.sequence{width:min(600px,94%);min-height:132px;padding:15px 18px;border-radius:22px;background:linear-gradient(180deg,rgba(4,20,12,.24),rgba(1,11,6,.16)),radial-gradient(ellipse at 50% 45%,rgba(113,171,111,.08),transparent 68%);border-color:rgba(244,223,156,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 20px 44px rgba(0,0,0,.12)}
+.seq{width:82px;border-radius:11px}.seq .card-art{filter:drop-shadow(0 14px 15px rgba(0,0,0,.28))}.seq-arrow{font-size:12px;color:rgba(244,223,156,.26)}
+.sequence-hint{color:#d9cc9c;text-transform:uppercase;letter-spacing:.16em;font-size:8px;font-weight:950;padding:7px 10px;border-radius:999px;background:rgba(3,16,9,.44);border:1px solid rgba(244,223,156,.13);box-shadow:0 12px 25px rgba(0,0,0,.16);animation:hintPulse .7s ease both}
+@keyframes hintPulse{0%{opacity:0;transform:scale(.92)}35%{opacity:1;transform:scale(1.02)}100%{opacity:1;transform:none}}
+.action-row{padding:0;gap:5px}.action-row:before{width:24%}.status{font-size:15px;text-shadow:0 2px 10px rgba(0,0,0,.16)}
+.actions .primary,.actions .secondary{min-height:48px;border-radius:16px}.actions .primary{min-width:190px;box-shadow:0 15px 28px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.24),0 0 0 1px rgba(245,224,161,.10);position:relative;overflow:hidden}
+.actions .primary:after{content:"";position:absolute;top:-40%;left:-35%;width:35%;height:180%;transform:rotate(18deg) translateX(-220%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:transform .55s ease;pointer-events:none}
+.actions .primary:hover:not(:disabled):after{transform:rotate(18deg) translateX(700%)}.actions .primary:active:not(:disabled){transform:translateY(2px) scale(.985)!important}
+.hand-zone{margin:0 -4px -4px;padding:8px 5px 4px;border-top:1px solid rgba(244,223,156,.09);background:linear-gradient(180deg,rgba(2,13,8,.08),rgba(2,9,5,.32));border-radius:18px 18px 12px 12px}
+.hand-divider{display:none}.hand-label{margin:0 0 2px;font-size:7px;color:#7e9388}.self-player-card{margin-bottom:1px}
+.my-hand{padding:8px 8px 2px;min-height:132px;align-items:flex-end}.my-hand .card{--card-w:108px;margin-left:-21px}.my-hand .card:first-child{margin-left:0}
+.my-hand .card:nth-child(1){--fan:-5deg}.my-hand .card:nth-child(2){--fan:-2deg}.my-hand .card:nth-child(3){--fan:2deg}.my-hand .card:nth-child(4){--fan:5deg}.my-hand .card:not(.pressing){transform:rotate(var(--fan,0deg))}.my-hand .card.active-card:hover:not(.disabled){transform:translateY(-18px) rotate(0deg) scale(1.035);z-index:10}
+.card{--card-w:88px;border-radius:12px;filter:drop-shadow(0 12px 16px rgba(0,0,0,.14));transition:transform .24s cubic-bezier(.18,.88,.22,1),filter .24s ease}
+.card:before{inset:-1px;border-radius:13px;background:linear-gradient(145deg,rgba(255,255,255,.46),transparent 17%,transparent 78%,rgba(0,0,0,.16)),linear-gradient(180deg,#fffefb,#f6f1e6);box-shadow:0 22px 34px rgba(0,0,0,.34),0 6px 12px rgba(0,0,0,.18),inset 0 0 0 1px rgba(63,48,27,.13),inset 0 0 0 2px rgba(255,255,255,.62)}
+.card:after{inset:2px;border-radius:10px;background:linear-gradient(125deg,rgba(255,255,255,.27),transparent 18%,transparent 78%,rgba(25,17,8,.08)),radial-gradient(circle at 15% 10%,rgba(255,255,255,.28),transparent 23%);box-shadow:inset 0 0 0 1px rgba(55,39,19,.055);opacity:.82;mix-blend-mode:normal}
+.card-art,.back-card-art{border-radius:11px;box-shadow:none;filter:saturate(.97) contrast(1.035)}
+.card:hover:not(.disabled),.card:focus-visible{filter:drop-shadow(0 24px 28px rgba(0,0,0,.36))}.card.active-card .card-art{filter:saturate(1) contrast(1.045)}.card.disabled .card-art{filter:grayscale(.04) saturate(.86) brightness(.91)}
+.card.deal-in{animation:dealInNext .62s cubic-bezier(.18,.9,.22,1) both;animation-delay:calc(var(--card-index,0) * 55ms)}
+@keyframes dealInNext{0%{opacity:0;transform:translate3d(0,55px,0) rotate(-7deg) scale(.78)}62%{opacity:1;transform:translate3d(0,-8px,0) rotate(2deg) scale(1.035)}100%{opacity:1;transform:rotate(var(--fan,0deg))}}
+.opponent-hand .card.deal-in{animation-name:dealBackInNext}@keyframes dealBackInNext{0%{opacity:0;transform:translate3d(0,-38px,0) rotate(5deg) scale(.8)}70%{opacity:1;transform:translate3d(0,5px,0) rotate(-1deg) scale(1.03)}100%{opacity:1;transform:none}}
+.fx-flight-card{position:fixed!important;z-index:120!important;margin:0!important;border-radius:12px!important;pointer-events:none!important;object-fit:fill;transform-origin:50% 50%;box-shadow:0 28px 48px rgba(0,0,0,.42),0 4px 12px rgba(0,0,0,.22),0 0 0 1px rgba(255,239,184,.16);will-change:transform,opacity}
+.fx-flight-wrap{position:fixed;z-index:121;pointer-events:none;transform-style:preserve-3d;will-change:transform,opacity}.fx-impact{position:fixed;width:28px;height:28px;border-radius:50%;z-index:119;pointer-events:none;border:1px solid rgba(244,223,156,.55);box-shadow:0 0 0 8px rgba(244,223,156,.05),0 0 28px rgba(244,223,156,.22);transform:translate(-50%,-50%);animation:impactBurst .48s cubic-bezier(.18,.8,.2,1) both}
+@keyframes impactBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
+.fx-collect-card{position:fixed!important;z-index:118!important;margin:0!important;pointer-events:none!important;border-radius:12px!important;object-fit:fill;will-change:transform,opacity;box-shadow:0 24px 46px rgba(0,0,0,.40),0 4px 10px rgba(0,0,0,.18)}
+.collection-glow{position:fixed;z-index:117;pointer-events:none;width:100px;height:140px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(244,223,156,.14),transparent 68%);animation:glowFade .8s ease both}
+@keyframes glowFade{0%{opacity:0;transform:translate(-50%,-50%) scale(.72)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+@media(max-width:900px){
+  .board{padding:4px 4px 6px;border-radius:18px}
+  .board:before{inset:2px;border-radius:15px}
+  .app-frame{padding:2px;border-radius:16px}.table{border-radius:13px;min-height:100dvh}.table-inner{padding:8px 7px 4px}.game-top{margin-bottom:2px}.score-hud{padding:7px 9px;margin-bottom:4px}
+  .board{min-height:calc(100dvh - 86px);gap:4px;grid-template-rows:auto auto minmax(0,1fr) auto}.player-card{width:94%;padding:5px 7px}.opponent-hand{min-height:38px}.opponent-hand .card{--card-w:42px}
+  .table-assets{height:148px;min-height:148px;width:100%;margin-top:-2px}.pile-display{top:51px;width:103px;padding:6px 6px;border-radius:15px;grid-template-columns:auto 1fr auto;gap:5px}.pile-display:first-child{left:2px}.pile-display.right{right:2px}.pile-stack{width:41px;height:57px}.pile-letter{width:22px;height:22px;font-size:8px}.pile-copy small,.deck-copy small{font-size:6px}.pile-copy strong{font-size:12px}.pile-display em{font-size:8px}
+  .deck-display{min-width:116px}.deck-stack{width:88px;height:123px}.deck-copy{display:flex;align-items:baseline;gap:6px}.deck-copy small{font-size:7px}.deck-copy strong{font-size:14px}.turn-ribbon{min-height:20px;padding:4px 8px;font-size:7px}
+  .sequence{width:min(94%,360px);min-height:122px;padding:12px 8px;gap:5px;border-radius:20px}.seq{width:67px}.seq-arrow{font-size:9px}.status{font-size:12px}.status-sub{font-size:8px}.actions{width:100%;padding:0 8px}.actions .primary{flex:1;min-width:0;max-width:320px;height:50px;font-size:15px}.actions .secondary{min-width:0}
+  .self-player-card{width:86%;padding:4px 7px}.hand-zone{padding:6px 3px 2px;border-radius:16px 16px 9px 9px}.my-hand{min-height:126px;padding:8px 4px 0}.my-hand .card{--card-w:91px;margin-left:-24px}.my-hand .card:first-child{margin-left:0}
+  .my-hand .card:nth-child(1){--fan:-5deg}.my-hand .card:nth-child(2){--fan:-2deg}.my-hand .card:nth-child(3){--fan:2deg}.my-hand .card:nth-child(4){--fan:5deg}.result-card{padding:24px 20px}
+}
+@media(max-width:370px){
+  .score-meta{display:none}.board{min-height:calc(100dvh - 76px)}.table-assets{height:136px;min-height:136px}.deck-stack{width:80px;height:112px}.pile-display{width:92px}.my-hand{min-height:116px}.my-hand .card{--card-w:82px;margin-left:-22px}.sequence{min-height:112px}.seq{width:61px}
+}
+</style>
+
+<style id="next-level-immersion">
+/* Tabletop pass: less dashboard, more physical table. */
+.game-table{box-shadow:inset 0 0 0 1px rgba(255,240,193,.035),inset 0 20px 55px rgba(0,0,0,.08)}
+.opponent-panel,.self-player-card{background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+.player-card{position:relative;background:linear-gradient(180deg,rgba(2,14,8,.12),rgba(2,14,8,.02));border-color:transparent;box-shadow:none}
+.player-card:after,.self-player-card:after{content:"";position:absolute;left:18%;right:18%;bottom:-4px;height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.18),transparent);opacity:.5}
+.player-card.active:after,.self-player-card.active:after{opacity:1;background:linear-gradient(90deg,transparent,rgba(244,223,156,.55),transparent);box-shadow:0 0 12px rgba(244,223,156,.18)}
+.opponent-hand .card{filter:drop-shadow(0 8px 12px rgba(0,0,0,.28))}
+.opponent-hand .cards{gap:0}.opponent-hand .card{margin-left:-25px}.opponent-hand .card:first-child{margin-left:0}
+.sequence-wrap{position:relative;min-height:138px;display:flex;align-items:center;justify-content:center}
+.sequence-wrap:before{content:"";position:absolute;inset:7px 4%;border-radius:999px;background:radial-gradient(ellipse at 50% 48%,rgba(108,163,104,.12),transparent 66%);box-shadow:inset 0 0 34px rgba(0,0,0,.07)}
+.sequence-wrap:after{content:"";position:absolute;left:16%;right:16%;bottom:8px;height:1px;background:linear-gradient(90deg,transparent,rgba(244,223,156,.10),transparent)}
+.sequence{width:min(620px,96%);min-height:112px;padding:12px 10px;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none}
+.sequence:before{display:none}
+.seq{width:86px}
+.seq + .seq{margin-left:-8px}
+.seq-arrow{display:none}
+.sequence-hint{position:relative;z-index:3;margin:0}
+.card:before{
+  box-shadow:
+    0 26px 42px rgba(0,0,0,.36),
+    0 7px 13px rgba(0,0,0,.18),
+    inset 0 0 0 1px rgba(63,48,27,.14),
+    inset 0 0 0 2px rgba(255,255,255,.64),
+    inset 0 0 10px rgba(42,28,10,.045);
+}
+.card:after{
+  background:
+    linear-gradient(125deg,rgba(255,255,255,.30),transparent 17%,transparent 72%,rgba(25,17,8,.10)),
+    repeating-linear-gradient(0deg,rgba(80,55,20,.018) 0 1px,transparent 1px 3px),
+    radial-gradient(circle at 14% 9%,rgba(255,255,255,.30),transparent 21%);
+  opacity:.88;
+}
+.card-art,.back-card-art{backface-visibility:hidden;image-rendering:auto}
+.fx-flight-card.card,.fx-collect-card.card,.fx-flight-wrap.card{
+  overflow:visible!important;
+  border-radius:12px!important;
+  filter:drop-shadow(0 30px 44px rgba(0,0,0,.42)) drop-shadow(0 6px 10px rgba(0,0,0,.20))!important;
+}
+.fx-flight-card.card:before,.fx-collect-card.card:before,.fx-flight-wrap.card:before{z-index:1}
+.fx-flight-card.card:after,.fx-collect-card.card:after,.fx-flight-wrap.card:after{z-index:4}
+.draw-target{opacity:0!important}
+.draw-arrival{animation:drawArrival .22s ease both}
+@keyframes drawArrival{0%{opacity:0;transform:translateY(4px) scale(.985)}100%{opacity:1;transform:none}}
+.deck-stack{filter:drop-shadow(0 18px 34px rgba(0,0,0,.18))}
+.deck-stack span:nth-child(3){box-shadow:0 24px 36px rgba(0,0,0,.34),inset 0 0 0 1px rgba(255,255,255,.10)!important}
+.deck-stack.dealing span:nth-child(3){animation:deckPulse .36s cubic-bezier(.2,.9,.2,1) both}
+@keyframes deckPulse{0%{transform:scale(1)}45%{transform:translateY(-3px) scale(1.035) rotate(-.8deg)}100%{transform:none}}
+.pile-display{transition:transform .25s cubic-bezier(.18,.88,.22,1),box-shadow .25s ease,border-color .25s ease}
+
+@media(max-width:900px){
+  .player-card{width:100%;padding:4px 6px}
+  .player-card:after,.self-player-card:after{left:25%;right:25%}
+  .opponent-hand{min-height:41px}
+  .opponent-hand .card{--card-w:48px;margin-left:-27px}
+  .opponent-hand .card:first-child{margin-left:0}
+  .table-assets{margin-top:-4px}
+  .sequence-wrap{min-height:128px}
+  .sequence{min-height:104px;width:100%;padding:7px 4px}
+  .seq{width:67px}.seq + .seq{margin-left:-7px}
+  .hand-zone{background:linear-gradient(180deg,rgba(2,13,8,.06),rgba(2,9,5,.38))}
+  .my-hand .card{filter:drop-shadow(0 18px 25px rgba(0,0,0,.38))}
+}
+@media(max-width:370px){
+  .opponent-hand .card{--card-w:43px;margin-left:-25px}
+  .sequence-wrap{min-height:118px}.sequence{min-height:96px}.seq{width:60px}
+}
+</style>
+
+<style id="next-level-micro">
+.draw-flash{animation:drawFlash .38s cubic-bezier(.18,.88,.2,1) both}
+@keyframes drawFlash{0%{transform:scale(1)}40%{transform:scale(1.12);color:var(--gold-hi)}100%{transform:scale(1)}}
+.deck-display .deck-copy strong{transition:transform .22s ease,color .22s ease}
+</style>
+
+<style id="next-level-motion">
+.hand-reflow{will-change:transform}
+.opponent-hand .card.draw-in{animation:oppDrawIn .46s cubic-bezier(.16,.9,.2,1) both;animation-delay:calc(var(--card-index,0) * 55ms)}
+@keyframes oppDrawIn{0%{opacity:0;transform:translate3d(18px,-18px,0) rotate(5deg) scale(.78)}65%{opacity:1;transform:translate3d(-2px,3px,0) rotate(-1deg) scale(1.03)}100%{opacity:1;transform:none}}
+.deck-stack.dealing span:nth-child(3){animation:deckPulseHard .42s cubic-bezier(.16,.92,.18,1) both!important}
+@keyframes deckPulseHard{0%{transform:scale(1)}40%{transform:translateY(-6px) scale(1.06) rotate(-1deg)}100%{transform:none}}
+.card-shine{
+  position:fixed;z-index:122;pointer-events:none;width:90px;height:150px;border-radius:12px;
+  background:linear-gradient(105deg,transparent 24%,rgba(255,255,255,.24) 49%,transparent 70%);
+  transform:translate(-50%,-50%) rotate(15deg);opacity:0;
+  animation:cardShine .42s ease both;
+}
+@keyframes cardShine{0%{opacity:0;transform:translate(-65%,-50%) rotate(15deg)}25%{opacity:.8}100%{opacity:0;transform:translate(65%,-50%) rotate(15deg)}}
+</style>
+
+<style id="next-level-short-screen">
+@media(max-width:900px) and (max-height:560px){
+  .table-inner{padding:5px 6px 2px}
+  .game-top{min-height:28px}
+  .brand .mini{width:28px;height:28px;font-size:16px}
+  .room-pill{padding:4px 6px;font-size:8px}
+  .score-hud{padding:5px 8px;margin-bottom:2px;gap:7px;border-radius:12px}
+  .score-num{font-size:19px}.score-side{font-size:7px}
+  .score-meta{font-size:7px}
+  .board{min-height:calc(100dvh - 66px);gap:2px}
+  .player-card{padding:2px 5px}.avatar{width:25px;height:25px;flex-basis:25px}.player-value{font-size:10px}
+  .opponent-hand{min-height:27px}.opponent-hand .card{--card-w:34px;margin-left:-19px}
+  .table-assets{height:103px;min-height:103px;margin-top:-2px}
+  .deck-display{min-width:92px}.deck-stack{width:65px;height:91px}.deck-copy small{font-size:6px}.deck-copy strong{font-size:11px}
+  .pile-display{top:36px;width:84px;padding:4px 4px;gap:4px;border-radius:11px}
+  .pile-stack{width:31px;height:43px}.pile-letter{width:18px;height:18px;font-size:7px}.pile-copy small{font-size:5px}.pile-copy strong{font-size:10px}.pile-display em{font-size:6px}
+  .turn-ribbon{min-height:17px;padding:3px 7px;font-size:6px}
+  .sequence-wrap{min-height:83px}.sequence{min-height:72px;padding:4px 2px}.seq{width:47px}.seq + .seq{margin-left:-6px}
+  .action-row{gap:2px}.status{font-size:10px;min-height:15px}.status-sub{font-size:7px;min-height:9px}
+  .actions .primary,.actions .secondary{min-height:38px;height:38px;font-size:11px;border-radius:12px}
+  .self-player-card{padding:2px 5px}.self-avatar{width:25px;height:25px;flex-basis:25px}
+  .hand-zone{padding:3px 2px 0;border-radius:12px 12px 8px 8px}.hand-label{font-size:6px}
+  .my-hand{min-height:87px;padding:3px 2px 0}.my-hand .card{--card-w:67px;margin-left:-18px}.my-hand .card:first-child{margin-left:0}
+  .my-hand .card:nth-child(1){--fan:-4deg}.my-hand .card:nth-child(2){--fan:-1.5deg}.my-hand .card:nth-child(3){--fan:1.5deg}.my-hand .card:nth-child(4){--fan:4deg}
+}
+</style>
+
+<style id="next-level-interaction-final">
+.card.blocked{pointer-events:none!important;cursor:default!important}
+.card.blocked:hover,.card.blocked:focus-visible{filter:none!important;transform:rotate(var(--fan,0deg))!important}
+.hand.locked{pointer-events:none}
+.play-source{opacity:0!important;pointer-events:none!important}
+.sequence.collecting-base .seq{opacity:.94;filter:brightness(1.04) drop-shadow(0 8px 16px rgba(0,0,0,.35))}
+.sequence.collection-flying .seq{opacity:0!important}
+.sequence.collection-hold{min-height:132px}
+.sequence.collecting-base{pointer-events:none}
+@media(max-width:900px){
+  .opponent-panel{min-height:26px}
+  .player-card{width:max-content;min-width:122px;padding:4px 7px}
+  .player-value{font-size:9px}.player-kicker{font-size:6px}
+  .self-player-card{width:max-content;min-width:108px;padding:3px 7px}
+  .self-kicker{font-size:6px}.self-copy strong{font-size:9px}
+  .table-assets{height:152px;min-height:152px}
+  .deck-stack{width:96px;height:134px}
+  .pile-display{top:52px;width:100px;padding:5px}
+  .pile-stack{width:42px;height:59px}
+  .sequence-wrap{min-height:130px}
+  .my-hand .card{--card-w:98px;margin-left:-27px}
+  .hand-label{display:none}
+}
+@media(max-width:370px){
+  .table-assets{height:138px;min-height:138px}
+  .deck-stack{width:86px;height:120px}
+  .sequence-wrap{min-height:116px}
+  .my-hand .card{--card-w:86px;margin-left:-24px}
+}
+</style>
+
+<style id="startup-reliability">
+/* Never make the real hand invisible while the authoritative state is already on screen. */
+.card.deal-in{
+  animation:dealInReliable .46s cubic-bezier(.18,.9,.22,1) both;
+  animation-delay:calc(var(--card-index,0) * 45ms);
+}
+@keyframes dealInReliable{
+  0%{opacity:1;transform:translate3d(0,18px,0) rotate(0deg) scale(.96)}
+  70%{opacity:1;transform:translate3d(0,-3px,0) rotate(0deg) scale(1.01)}
+  100%{opacity:1;transform:none}
+}
+.opponent-hand .card.deal-in{
+  animation-name:dealBackReliable;
+  animation-delay:calc(var(--card-index,0) * 35ms);
+}
+@keyframes dealBackReliable{
+  0%{opacity:1;transform:translate3d(0,-12px,0) rotate(0deg) scale(.96)}
+  70%{opacity:1;transform:translate3d(0,2px,0) rotate(0deg) scale(1.01)}
+  100%{opacity:1;transform:none}
+}
+</style>
+<style id="quadrant-playfield">
+.center-stage{isolation:isolate;overflow:visible;width:min(100%,1480px);justify-self:center;margin:0 auto;padding:12px 14px!important;border:1px solid rgba(227,199,127,.31);border-radius:30px;background:linear-gradient(145deg,rgba(22,66,41,.20),rgba(1,18,11,.19));box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 36px rgba(0,0,0,.11),0 14px 36px rgba(0,0,0,.08)}
+.center-stage:before{z-index:-1;width:100%;height:100%;border-radius:28px;background:radial-gradient(ellipse at 50% 45%,rgba(116,177,117,.18),rgba(23,71,43,.11) 44%,transparent 78%)}
+.table-assets{position:absolute!important;inset:0!important;z-index:0!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;pointer-events:none;filter:none}
+.center-stage>.table-mark{z-index:0;opacity:.08}
+.table-assets .pile-display{z-index:1;top:auto;width:clamp(126px,18vw,164px);padding:8px;border-color:rgba(244,223,156,.20);background:linear-gradient(145deg,rgba(4,22,13,.86),rgba(3,15,9,.66));box-shadow:0 14px 32px rgba(0,0,0,.26),inset 0 0 0 1px rgba(255,255,255,.04);transform:scale(var(--studio-pile-scale,1));transform-origin:center}
+.table-assets .pile-display:first-child{left:auto;right:1.5%;bottom:2.5%;border-color:rgba(255,91,77,.55);box-shadow:0 0 0 2px rgba(255,67,56,.14),0 14px 32px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.04)}
+.table-assets .pile-display.right{left:1.5%;right:auto;top:2.5%;bottom:auto;text-align:left;border-color:rgba(255,230,48,.55);box-shadow:0 0 0 2px rgba(255,230,48,.13),0 14px 32px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.04)}
+.table-assets .deck-display{top:3%;left:auto;right:2%;transform:none;min-width:0;z-index:1;filter:drop-shadow(0 0 15px rgba(156,58,255,.20))}
+.table-assets .deck-stack{width:clamp(72px,10vw,100px);height:auto;aspect-ratio:104/145}
+.table-assets .deck-copy{padding:4px 8px;border-radius:10px;background:rgba(25,10,39,.72);border:1px solid rgba(179,102,255,.43);color:#e5c6ff}
+.board{border:1px solid rgba(233,208,139,.23);box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 0 5px rgba(3,16,9,.14),0 22px 56px rgba(0,0,0,.14)}
+.board:before{inset:4px;border:1px solid rgba(244,223,156,.08);border-radius:22px;pointer-events:none}
+.card.active-card{filter:drop-shadow(0 0 8px rgba(255,219,113,.28))}
+.card.forced-choice{outline:2px solid rgba(255,229,147,.96);outline-offset:4px}
+
+
+@media(max-width:900px){
+ .table-assets .pile-display{width:clamp(86px,17vw,118px);padding:5px;gap:4px}
+ .table-assets .pile-stack{width:clamp(30px,6vw,40px);height:auto;aspect-ratio:50/68}
+ .table-assets .pile-letter{width:21px;height:21px}
+ .table-assets .pile-copy small{font-size:5px}.table-assets .pile-copy strong{font-size:11px}.table-assets .pile-display em{font-size:7px}
+ .table-assets .deck-stack{width:clamp(62px,9vw,82px)}
+ .table-assets .deck-copy{font-size:8px}
+}
+@media(max-width:500px){
+ .table-assets .pile-display{width:84px;grid-template-columns:30px 1fr auto;padding:4px 3px;gap:3px;border-radius:11px}
+ .table-assets .pile-stack{width:27px;height:38px}.table-assets .pile-letter{width:17px;height:17px;font-size:7px}
+ .table-assets .pile-copy small{font-size:4px}.table-assets .pile-copy strong{font-size:10px}.table-assets .pile-display em{font-size:6px}
+ .table-assets .pile-display:first-child{right:0;bottom:1%}.table-assets .pile-display.right{left:0;top:1%}
+ .table-assets .deck-display{right:0;top:3%}.table-assets .deck-stack{width:57px}
+ .board{padding-inline:5px;border-radius:19px}.board:before{inset:3px;border-radius:16px}
+}
+@media(min-width:1500px){.center-stage{padding:18px 22px!important;border-radius:36px}.sequence{width:min(680px,70%);min-height:152px}.table-assets .deck-display{right:3%}}
+@media(max-height:760px){.center-stage{padding-block:6px!important}.table-assets .deck-display{top:1%}.table-assets .pile-display:first-child{bottom:1%}.sequence{min-height:100px;padding-block:9px}}
+/* Keep the same quadrant playfield on touch screens; scale its pieces to the available space. */
+@media(max-width:600px){
+ .board{gap:5px;padding:5px 4px 6px;min-height:calc(100dvh - 94px)}
+ .center-stage{gap:5px;width:100%;min-width:0;padding:6px 5px!important;border-radius:20px}
+ .table-assets{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;min-height:0!important}
+ .table-assets .pile-display{width:clamp(68px,21vw,96px);min-height:0;padding:4px;gap:3px;border-radius:11px}
+ .table-assets .pile-stack{width:clamp(22px,7vw,31px);height:auto;aspect-ratio:50/68}
+ .table-assets .pile-letter{width:clamp(15px,4.5vw,19px);height:clamp(15px,4.5vw,19px);font-size:6px}
+ .table-assets .pile-copy small,.table-assets .deck-copy small{font-size:clamp(4px,1.3vw,6px);letter-spacing:.07em}
+ .table-assets .pile-copy strong{font-size:clamp(9px,2.8vw,12px)}.table-assets .pile-display em{font-size:clamp(6px,1.8vw,8px)}
+ .table-assets .pile-display:first-child{right:1%;bottom:1%}.table-assets .pile-display.right{left:1%;top:1%}
+ .table-assets .deck-display{top:2%;right:1%;left:auto;transform:none;min-width:0}
+ .table-assets .deck-stack{width:clamp(46px,14vw,66px);height:auto;aspect-ratio:104/145}
+ .table-assets .deck-copy{gap:3px;padding:3px 6px}.table-assets .deck-copy strong{font-size:clamp(9px,2.6vw,12px)}
+ .sequence-wrap{min-width:0}.sequence{width:min(72%,300px);min-height:94px;padding:8px 5px;gap:3px;border-radius:16px}.seq{width:clamp(46px,14vw,60px)}
+ .action-row{gap:3px}.status,.status-sub{width:72%;max-width:300px}.status{font-size:12px}.status-sub{font-size:8px}.actions{width:auto!important;max-width:72%;gap:6px;padding:0 4px}.actions .primary,.actions .secondary{width:184px;max-width:68vw;min-width:0;flex:none;min-height:40px;height:40px;border-radius:12px;font-size:12px}
+ .my-hand{min-height:0;height:clamp(105px,19vh,142px);padding:4px 2px 2px}.my-hand .card{--card-w:clamp(60px,19vw,82px);margin-left:clamp(-10px,-2.5vw,-8px)}.my-hand .card:first-child{margin-left:0}
+ .actions .primary,.actions .secondary{min-height:44px;height:44px}
+ .card.forced-choice{outline-offset:2px}.table-mark{width:84%;opacity:.06}
+}
+@media(max-width:380px){
+ .table-assets .pile-display{width:68px;padding:3px}.table-assets .pile-stack{width:22px}.table-assets .pile-copy small{display:none}
+ .table-assets .deck-stack{width:45px}.my-hand .card{--card-w:60px;margin-left:-8px}.sequence{width:80%;min-height:82px}.seq{width:45px}
+}
+@media(max-width:600px) and (max-height:700px){
+ .board{min-height:calc(100dvh - 94px)}.center-stage{gap:3px;padding-block:4px!important}
+ .table-assets .pile-display{padding:3px}.table-assets .deck-display{top:1%}.table-assets .pile-display:first-child{bottom:1%}
+ .sequence,.sequence-wrap{min-height:74px}.seq{width:40px}.actions .primary,.actions .secondary{min-height:44px;height:44px}
+ .my-hand{height:94px}.my-hand .card{--card-w:56px;margin-left:-8px}.self-player-card{padding:2px 5px}.self-avatar{width:23px;height:23px;flex-basis:23px}
+}
+@media(max-width:900px){.game-table{min-height:calc(100dvh - 4px)}}
+@media(max-width:380px) and (max-height:700px){
+ .table-assets .pile-display:first-child{right:-1.5%}
+ #take{width:40vw;max-width:48vw}
+}
+@media(min-width:901px) and (max-height:820px){
+ .table-inner{padding:6px 10px 5px}
+ .game-top{margin-bottom:3px}
+ .score-hud{padding:6px 11px;margin-bottom:5px}
+ .board{gap:5px;min-height:calc(100dvh - 140px)}
+ .opponent-hand{min-height:40px}.opponent-hand .card{--card-w:60px}
+ .table-assets .deck-display{top:1%}.table-assets .deck-stack{width:72px;height:auto;aspect-ratio:104/145}
+ .sequence-wrap{min-height:104px}.sequence{min-height:92px;padding:8px}.seq{width:72px}
+ .hand-zone{padding-top:2px}.self-player-card{padding:4px 8px}
+ .hand-label{margin-bottom:2px}.my-hand{min-height:106px;padding:3px 8px 1px}.my-hand .card{--card-w:76px;margin-left:-9px}.my-hand .card:first-child{margin-left:0}
+}
+@media(max-width:900px){body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}}
+@media(hover:none){
+ .card:hover:not(.disabled),.card.active-card:hover:not(.disabled){transform:rotate(var(--fan,0deg))}
+ .card:hover:not(.disabled) .card-art{transform:none;filter:drop-shadow(0 12px 10px rgba(0,0,0,.22)) drop-shadow(0 3px 2px rgba(0,0,0,.16))}
+ .deck-display:hover .deck-stack span:nth-child(1){transform:translate(9px,-7px) rotate(4deg)}
+ .deck-display:hover .deck-stack span:nth-child(2){transform:translate(4px,-3px) rotate(1.7deg)}
+}
+</style>
+<style id="mobile-playfield-composition">
+/* Center the sequence within the phone playfield and anchor the action row toward the hand edge. */
+@media(max-width:600px){
+  .center-stage{align-content:stretch;grid-template-rows:auto minmax(0,1fr) auto;min-height:184px;gap:3px}
+  .center-stage>.table-label{display:none}
+  .center-stage>.turn-ribbon{align-self:start;justify-self:center;margin:0}
+  .center-stage>.sequence-wrap{align-self:stretch;min-height:0;grid-row:2}
+  .center-stage>.sequence-wrap .sequence{min-height:clamp(72px,14dvh,94px)}
+  .center-stage>.action-row{align-self:end;justify-self:stretch;width:100%;padding:0 0 2px;gap:2px}
+  .center-stage>.action-row .actions{margin:0 auto}
+}
+@media(max-width:600px) and (max-height:700px){
+  .center-stage{min-height:168px}
+  .center-stage>.sequence-wrap .sequence{min-height:68px}
+}
+</style>
+<style id="opponent-boundary-and-deck-position">
+/* One real layout region contains the opponent and the central playfield. */
+.board{grid-template-rows:minmax(0,1fr) auto}
+.play-zone{position:relative;isolation:isolate;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:7px;min-height:0;padding:8px 10px;border:1px solid rgba(227,199,127,.42);border-radius:30px;background:linear-gradient(145deg,rgba(22,66,41,.14),rgba(1,18,11,.12));box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 36px rgba(0,0,0,.10),0 14px 36px rgba(0,0,0,.07)}
+.play-zone:before{content:"";position:absolute;z-index:0;inset:4px;border:1px solid rgba(255,255,255,.035);border-radius:24px;pointer-events:none}
+.play-zone>*{position:relative;z-index:1}
+.center-stage{width:100%!important;min-width:0;justify-self:stretch;margin:0;padding:4px 5px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.center-stage:after{display:none}
+.play-zone>.deck-display{position:absolute;z-index:3;top:50%;right:1%;left:auto;transform:translateY(-50%);min-width:0;filter:drop-shadow(0 0 15px rgba(156,58,255,.20))}
+.play-zone>.deck-display .deck-stack{width:clamp(82px,6vw,112px);height:auto;aspect-ratio:104/145}
+.play-zone>.deck-display .deck-copy{gap:4px;padding:4px 8px;border-radius:10px;background:rgba(25,10,39,.72);border:1px solid rgba(179,102,255,.43);color:#e5c6ff}
+@media(max-width:900px){
+  .board{grid-template-rows:minmax(0,1fr) auto;gap:5px}
+  .play-zone{gap:5px;padding:5px;border-radius:24px}
+  .play-zone:before{inset:3px;border-radius:20px}
+  .play-zone>.deck-display{right:1%}
+  .play-zone>.deck-display .deck-stack{width:clamp(62px,9vw,82px)}
+}
+@media(max-width:600px){
+  .play-zone{gap:4px;padding:4px;border-radius:20px}
+  .play-zone:before{inset:2px;border-radius:16px}
+  .play-zone>.deck-display{right:.5%}
+  .play-zone>.deck-display .deck-stack{width:clamp(46px,14vw,66px)}
+}
+@media(max-width:370px){.play-zone>.deck-display .deck-stack{width:45px}}
+</style>
+<style id="center-playfield-content">
+/* Anchor the active sequence to the geometric center of the full felt, not the space below the opponent. */
+.play-zone>.table-assets{position:absolute!important;z-index:0!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;pointer-events:none}
+.play-zone>.center-stage{position:absolute!important;z-index:2!important;left:50%;top:50%;transform:translate(-50%,calc(-50% + clamp(64px,5dvh,72px)));display:flex!important;flex-direction:column;align-items:center;justify-content:center;align-content:normal;gap:clamp(6px,1dvh,12px);width:min(100%,1480px)!important;height:auto;min-height:0;margin:0;padding:0 12px!important}
+.center-stage>.table-label{display:none!important}
+.center-stage>.sequence-wrap{order:0;flex:0 0 auto;min-height:0}
+.center-stage>.turn-ribbon{order:1;flex:0 0 auto}
+.center-stage>.action-row{order:2;align-self:center!important;flex:0 0 auto;width:100%;margin:0}
+.result-card>.actions{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%;flex-wrap:nowrap}
+.result-card>.actions>#resultNext,.result-card>.actions>#resultClose{width:min(100%,240px);min-width:0;max-width:100%;flex:0 1 auto}
+@media(max-width:600px){
+  .play-zone>.center-stage{width:100%!important;gap:clamp(5px,1dvh,9px);padding:0 6px!important}
+  .center-stage>.sequence-wrap{align-self:stretch;min-height:0;width:100%}
+  .center-stage>.action-row{align-self:center!important;width:100%;padding:0 0 2px;gap:2px}
+}
+@media(max-width:600px) and (max-height:720px){
+  .play-zone>.center-stage{transform:translate(-50%,calc(-50% + 44px))}
+  .center-stage>.sequence-wrap .sequence{min-height:68px}
+  .center-stage>.turn-ribbon{min-height:18px;padding:3px 7px}
+  .center-stage>.action-row{gap:1px}
+  .center-stage>.action-row .status{min-height:15px;font-size:10px}
+  .center-stage>.action-row .status-sub{display:none}
+  .center-stage>.action-row .actions .primary,.center-stage>.action-row .actions .secondary{height:40px;min-height:40px}
+}
+.card.initial-deal,.opponent-hand .card.initial-deal{animation-duration:.34s!important;animation-delay:calc(var(--card-index,0)*22ms)!important}
+</style>
+</head><body>
+<div id="connection" class="connection hidden"></div>
+<div id="fxLayer" class="fx-layer" aria-live="polite"></div>
+<div id="demoBadge" class="demo-mode-badge hidden">PREVIEW UI <button id="demoStep" class="demo-step" type="button">următorul pas</button></div>
+<span id="me" hidden></span>
+
+<section id="lobby" class="app-frame lobby-frame">
+  <div class="table lobby-table">
+    <div class="lobby-card">
+      <div class="logo-mark">Ș</div>
+      <div class="lobby-kicker">ȘEPTICĂ · 1V1</div>
+      <h1>Șeptică</h1>
+      <p class="lobby-sub">Intră la masă în câteva secunde. Fără meniu inutil. Creezi camera, dai codul, începe partida.</p>
+      <div class="lobby-buttons">
+        <button class="primary" id="create">Creează masa</button>
+        <button class="secondary" id="join">Intră la masă</button>
+      </div>
+      <div class="join-row" style="margin-top:8px">
+        <select id="aiDifficulty" aria-label="Dificultate AI" style="flex:1"><option value="easy">AI ușor</option><option value="medium" selected>AI mediu</option><option value="hard">AI greu</option></select>
+        <button class="secondary" id="createPve">Joacă vs AI</button>
+      </div>
+      <div class="join-row">
+        <input id="roomCode" maxlength="5" placeholder="COD MASĂ" aria-label="Cod masă" autocomplete="off">
+        <button class="secondary" id="joinSecondary">Intră</button>
+      </div>
+      <p id="message" class="message"></p>
+      <div class="lobby-utilities">
+        <button id="demoLaunch" class="demo-launch" type="button">Previzualizare UI · solo</button>
+        <button id="qaLaunch" class="demo-launch" type="button">Test 1v1 · două conexiuni</button>
+        <a class="demo-launch" href="/studio.html">Studio UI · reglează masa</a>
+      </div>
+      <div id="lobbyState" class="lobby-state">Conectare la masă…</div>
+    </div>
   </div>
-</div>
-<div class="panel"><h2>Adversar <small id="oppCount"></small></h2><div id="opp" class="cards"></div><h2>Secvența</h2><div id="sequence" class="sequence">Nicio secvență activă</div><p id="status"></p></div>
-<div class="panel"><h2>Mâna ta</h2><div id="hand" class="cards"></div><p><button id="take" disabled>Ia-le</button> <button id="next" class="hidden">Rundă nouă</button></p></div>
-<div class="panel grid"><div class="box">Grămada A<br>Cărți: <span id="pileA">0</span><br>Puncte: <span id="pointsA">0</span></div><div class="box">Grămada B<br>Cărți: <span id="pileB">0</span><br>Puncte: <span id="pointsB">0</span></div></div>
-<div class="panel"><h2>Jurnal</h2><div id="log"></div></div></div>
-<script src="/socket.io/socket.io.js"></script><script>
-const socket=io(),$=id=>document.getElementById(id);let me=0;
-function show(){ $("lobby").classList.add("hidden");$("game").classList.remove("hidden") }
-$("create").onclick=()=>socket.emit("create_room");$("join").onclick=()=>socket.emit("join_room",$("roomCode").value);
-socket.on("room_created",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="A"});socket.on("room_joined",d=>{me=d.player;show();$("code").textContent=d.code;$("me").textContent="B"});socket.on("error_message",m=>$("message").textContent=m);
-socket.on("state",s=>{show();$("code").textContent=s.room;$("me").textContent=s.player?"B":"A";$("round").textContent=s.round;$("small").textContent=s.small.join("–");
-$("big").textContent=s.big.join("–");
-$("deck").textContent=s.deck;$("oppCount").textContent=s.opponentCount+" cărți";$("opp").innerHTML=Array.from({length:s.opponentCount},()=>'<div class="card back">?</div>').join("");$("hand").innerHTML=s.hand.map(c=>`<div class="card ${s.status==="playing"&&s.turn===s.player?"":"disabled"}" data-c="${c}">${c}</div>`).join("");[...$("hand").children].forEach(x=>x.onclick=()=>!x.classList.contains("disabled")&&socket.emit("play_card",x.dataset.c));$("sequence").innerHTML=s.sequence.length?s.sequence.map(c=>`<div class="seq">${c}</div>`).join("<span>→</span>"):"Nicio secvență activă";$("status").textContent=s.status==="playing"?(s.turn===s.player?"Este rândul tău.":"Așteaptă adversarul."):(s.roundResult?.draw?"Egalitate — joc dublu.":"Runda s-a terminat.");$("take").disabled=!(s.status==="playing"&&s.turn===s.player&&s.sequence.length>=2);$("next").classList.toggle("hidden",!(s.status==="round_finished"||s.status==="round_draw"));$("next").disabled=s.player!==0;$("pileA").textContent=s.pileCounts[0];$("pileB").textContent=s.pileCounts[1];$("pointsA").textContent=s.pilePoints[0];$("pointsB").textContent=s.pilePoints[1];$("log").textContent=s.log.join("\n")});
-$("take").onclick=()=>socket.emit("take");$("next").onclick=()=>socket.emit("next_round");</script></main></body></html>
+</section>
+
+<section id="game" class="app-frame game-shell hidden">
+  <div class="table game-table">
+    <div class="table-inner">
+      <div class="game-top">
+        <div class="brand"><div class="mini">Ș</div><strong>Șeptică</strong></div>
+        <div></div>
+        <div class="room-pill"><span>MASĂ</span><b id="code"></b><span class="room-actions"><button class="copy-room" id="copyRoom" type="button">copiază</button><button class="copy-room" id="shareRoom" type="button">trimite</button></span></div>
+      </div>
+
+      <div class="score-hud" id="score-card">
+        <span class="score-side" id="scoreLeftLabel">TU</span><strong class="score-num" id="smallYou">0</strong><span class="score-sep">–</span><strong class="score-num" id="smallOpp">0</strong><span class="score-side" id="scoreRightLabel">ADVERSAR</span>
+        <span class="score-meta"><span>RUNDA</span><b id="round"></b><span>·</span><span id="gameScore">A 0 – 0 B</span></span>
+        <span id="deck" hidden></span><span id="officialRoundScore" hidden>A 0 – 0 B</span>
+      </div>
+
+      <div class="board">
+        <div class="play-zone">
+        <div class="opponent-panel">
+          <div class="player-card" id="oppPlayerCard">
+            <div class="avatar" id="oppAvatar">B</div>
+            <div class="player-copy"><span class="player-kicker">ADVERSAR</span><div class="player-value"><span id="oppRole">Jucător B</span> · <span id="oppCount">0</span> cărți</div></div>
+            <span id="oppTurn" class="turn-dot"></span>
+          </div>
+        </div>
+
+        <div class="opponent-hand"><div id="opp" class="cards"></div></div>
+
+        <div class="center-stage">
+          <img class="table-mark" src="/ui/septica-table-mark.svg" alt="" aria-hidden="true">
+
+          <div class="table-label">MASA DE JOC</div>
+          <div class="turn-ribbon waiting" id="turnRibbon"><span class="turn-ribbon-dot"></span><span id="turnRibbonText">Așteaptă adversarul</span></div>
+
+          <div class="sequence-wrap"><div id="sequence" class="sequence"><span class="empty">Nicio secvență activă</span></div></div>
+
+          <div class="action-row">
+            <div id="status" class="status" aria-live="polite">Așteaptă adversarul.</div>
+            <div id="statusSub" class="status-sub"></div>
+            <div class="actions"><button id="take" class="primary" disabled>IA-LE</button><button id="next" class="secondary hidden">RUNDĂ NOUĂ</button></div>
+          </div>
+        </div>
+
+        <div class="table-assets">
+          <div class="pile-display" id="pileAVisual">
+            <div class="pile-stack" aria-hidden="true"></div><span class="pile-letter">A</span>
+            <div class="pile-copy"><small>GRĂMADĂ</small><strong id="pileAVisualCount">0</strong></div><em id="pileAVisualPoints">0p</em>
+          </div>
+          <div class="pile-display right" id="pileBVisual">
+            <div class="pile-stack" aria-hidden="true"></div><span class="pile-letter">B</span>
+            <div class="pile-copy"><small>GRĂMADĂ</small><strong id="pileBVisualCount">0</strong></div><em id="pileBVisualPoints">0p</em>
+          </div>
+        </div>
+
+          <div class="deck-display" aria-label="Pachet">
+            <div class="deck-stack"><span></span><span></span><span></span></div>
+            <div class="deck-copy"><small>PACHET</small><strong id="deckVisual">0</strong></div>
+          </div>
+        </div>
+
+        <div class="hand-zone">
+          <div class="hand-divider"></div>
+          <div class="self-player-card" id="selfPlayerCard">
+            <div class="self-avatar" id="selfAvatar">A</div>
+            <div class="self-copy"><span class="self-kicker">TU</span><strong id="selfRole">Jucător A</strong></div>
+            <span class="self-turn-dot" id="selfTurnDot"></span>
+          </div>
+          <div class="hand-label">MÂNA TA</div>
+          <div id="hand" class="cards my-hand"></div>
+        </div>
+      </div>
+
+      <details class="dev-tools"><summary>Jurnal de debug</summary><div id="log" class="dev-log"></div></details>
+    </div>
+
+    <div id="resultOverlay" class="result-overlay hidden">
+      <div class="result-card">
+        <div class="eyebrow" id="resultKicker">FINAL DE RUNDA</div>
+        <div class="result-title" id="resultTitle">Runda s-a terminat</div>
+        <div class="result-score" id="resultScore">A 0 – 0 B</div>
+        <div class="result-note" id="resultNote"></div>
+        <div class="actions"><button id="resultNext" class="primary hidden">RUNDĂ NOUĂ</button><button id="resultClose" class="secondary">MENIU</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.my-hand .card{scale:var(--studio-hand-scale,1);transform-origin:bottom center;margin-left:calc(-1 * var(--studio-hand-overlap,10px))}
+.my-hand .card:first-child{margin-left:0}
+</style>
+<script src="/ui-tuning.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+const BUILD="2026-10-10-godot-ui-workshop-09"; console.info("[Șeptică] build",BUILD);
+const socket=io(),$=id=>document.getElementById(id);let me=0,lastState=null,audioCtx=null,pendingPlayFx=null,pendingTakeFx=false,fxGeneration=0;const urlParams=new URLSearchParams(location.search),demoMode=urlParams.get("demo")==="1",studioPreview=urlParams.get("studioPreview")==="1",qaMode=urlParams.get("qa"),qaChannel=qaMode&&"BroadcastChannel"in window?new BroadcastChannel("septica-qa-v1"):null,inviteCode=(urlParams.get("join")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5);let demoStep=0,qaJoinSent=false;
+let uiTuning=SepticaUiTuning.load();try{if(urlParams.has("tune"))uiTuning=SepticaUiTuning.sanitize(JSON.parse(urlParams.get("tune")));}catch{}uiTuning=SepticaUiTuning.apply(uiTuning);if(!studioPreview&&!urlParams.has("tune")&&!SepticaUiTuning.hasSaved())fetch("/ui-tuning-defaults.json",{cache:"no-store"}).then(response=>response.ok?response.json():null).then(settings=>{if(settings)uiTuning=SepticaUiTuning.apply(settings)}).catch(()=>{});if(studioPreview){window.addEventListener("message",event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=="septica-studio-preview")return;uiTuning=SepticaUiTuning.apply(event.data.settings)})}
+function audio(){if(audioCtx)return audioCtx;try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch{return null}return audioCtx}
+function tone(freq,duration=.07,type="sine",gain=.035,offset=0){const ctx=audio();if(!ctx)return;try{const now=ctx.currentTime+offset,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(freq,now);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(gain,now+.008);g.gain.exponentialRampToValueAtTime(.0001,now+duration);o.connect(g);g.connect(ctx.destination);o.start(now);o.stop(now+duration+.02)}catch{}}
+function sound(kind){
+  if(kind==="turn"){tone(660,.08,"sine",.03);tone(880,.11,"sine",.025,.07)}
+  else if(kind==="card"){tone(390,.045,"triangle",.022)}
+  else if(kind==="land"){tone(520,.035,"triangle",.018);tone(320,.055,"triangle",.014,.025)}
+  else if(kind==="take"){tone(240,.08,"square",.024);tone(180,.10,"square",.018,.07);tone(280,.06,"triangle",.012,.16)}
+  else if(kind==="collect"){tone(330,.05,"triangle",.016);tone(220,.07,"triangle",.012,.045)}
+  else if(kind==="finish"){tone(523,.11,"sine",.03);tone(659,.12,"sine",.026,.09);tone(784,.16,"sine",.022,.19)}
+}
+function toast(text,kind=""){const n=document.createElement("div");n.className="fx-toast"+(kind?" "+kind:"");n.textContent=text;$("fxLayer").appendChild(n);setTimeout(()=>n.remove(),900)}
+function primeAudio(){const ctx=audio();if(ctx&&ctx.state==="suspended")ctx.resume().catch(()=>{})}
+document.addEventListener("pointerdown",primeAudio,{once:true});
+
+const demoBase={
+  room:"DEMO1",player:0,players:[true,true],status:"playing",round:3,game:1,
+  small:[1,0],big:[0,0],roundDouble:false,roundResult:null,gameResult:null,deck:18,
+  hand:["10","7","K","A"],opponentCount:4,sequence:[],turn:0,
+  pileCounts:[3,4],pilePoints:[1,2],log:["Previzualizare UI locală.","Nu este conectat la o partidă reală."]
+};
+function qaJoinFromMessage(ev){
+  if(qaMode!=="guest"||qaJoinSent||!ev?.data||ev.data.type!=="septica-qa-room"||!ev.data.code)return;
+  qaJoinSent=true;
+  $("roomCode").value=String(ev.data.code).toUpperCase();
+  socket.emit("join_room",$("roomCode").value);
+}
+if(qaChannel)qaChannel.addEventListener("message",qaJoinFromMessage);
+
+function demoState(step){
+  const s=structuredClone(demoBase);
+  if(step>=1){s.sequence=["10"];s.hand=["7","K","A"];s.turn=0;s.deck=17}
+  if(step>=2){s.sequence=["10","10"];s.hand=["7","K","A"];s.turn=0;s.deck=16}
+  if(step>=3){s.sequence=["10","10","7"];s.hand=["K","A"];s.turn=0;s.deck=15}
+  if(step>=4){s.sequence=[];s.hand=["K","A","9","Q"];s.pileCounts=[3,7];s.pilePoints=[1,4];s.deck=15;s.turn=0}
+  if(step>=5){s.sequence=["Q"];s.hand=["K","A","9"];s.turn=0;s.deck=14}
+  const suits=["clubs","diamonds","hearts","spades"],seen={};
+  const physical=card=>{if(typeof card!=="string")return card;const n=seen[card]||0;seen[card]=n+1;const suit=suits[n%4];return{id:card+":"+suit,rank:card,suit}};
+  s.hand=s.hand.map(physical);s.sequence=s.sequence.map(physical);
+  return s;
+}
+function renderDemo(){
+  $("demoBadge").classList.remove("hidden");
+  show();
+  renderState(demoState(demoStep));
+}
+function advanceDemo(){
+  primeAudio();
+  demoStep=demoStep>=5?0:demoStep+1;
+  if(demoStep===4){sound("take");toast("Secvență colectată","gold")}
+  renderDemo();
+}
+
+function show(){ $("lobby").classList.add("hidden"); $("game").classList.remove("hidden"); }
+function setConnection(text,visible){ $("connection").textContent=text; $("connection").classList.toggle("hidden",!visible); }
+function lobbyReady(){ if(inviteCode.length===5){$("lobbyState").textContent="Invitație la o masă de Șeptică. Apasă «Intră» ca să te alături.";return} $("lobbyState").textContent="Alege: creează o cameră sau introdu codul adversarului."; }
+function joinRoom(){ $("roomCode").value=$("roomCode").value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,5); if($("roomCode").value.length!==5){$("lobbyState").textContent="Introdu codul de 5 caractere sau deschide invitația primită.";return} socket.emit("join_room",$("roomCode").value); }
+function inviteUrl(code){const url=new URL(location.href);url.search="";url.hash="";url.searchParams.set("join",String(code).toUpperCase());return url.toString()}
+function clearInviteUrl(){const url=new URL(location.href);if(!url.searchParams.has("join"))return;url.searchParams.delete("join");history.replaceState({},"",url.pathname+url.search+url.hash)}
+function suitClass(suit){
+  return ["hearts","diamonds"].includes(String(suit))?"red":"black";
+}
+function visualSuit(card,index,items=[]){
+  const raw=typeof card==="object"&&card?String(card.suit||""):"";
+  if(raw){const map={"S":"spades","SPADES":"spades","♠":"spades","H":"hearts","HEARTS":"hearts","♥":"hearts","D":"diamonds","DIAMONDS":"diamonds","♦":"diamonds","C":"clubs","CLUBS":"clubs","♣":"clubs"};return map[raw.toUpperCase()]||raw}
+  const rank=String(typeof card==="object"&&card?card.rank:card);
+  const occurrence=items.slice(0,index).filter(x=>String(typeof x==="object"&&x?x.rank:x)===rank).length;
+  return ["spades","hearts","diamonds","clubs"][occurrence%4];
+}
+function assetRank(card){
+  const rank=String(typeof card==="object"&&card?card.rank:card);
+  return rank==="A"?"ace":rank==="J"?"jack":rank==="Q"?"queen":rank==="K"?"king":rank;
+}
+function cardAssetPath(card,index,items=[]){
+  const rank=assetRank(card),suit=visualSuit(card,index,items); return "/cards/"+rank+"_of_"+suit+(["jack","queen","king"].includes(rank)?"_court":"")+".svg";
+}
+function cardFaceMarkup(card,index,items=[]){
+  const rank=String(typeof card==="object"&&card?card.rank:card);
+  return '<img class="card-art" src="'+cardAssetPath(card,index,items)+'" alt="'+rank+' carte" draggable="false">';
+}
+
+
+function updateTurnRibbon(s,ownTurn,collecting){
+  const ribbon=$("turnRibbon"),label=$("turnRibbonText");
+  if(!ribbon||!label)return;
+  const opponentTurn=s.status==="playing"&&s.players?.[0]&&s.players?.[1]&&s.turn===1-s.player;
+  const active=ownTurn&&!collecting;
+  ribbon.classList.toggle("active",active);
+  ribbon.classList.toggle("waiting",!active);
+  label.textContent=collecting?"Se strâng cărțile":ownTurn?"Rândul tău":opponentTurn?"Rândul adversarului":s.status==="waiting"?"Așteaptă adversarul":"Runda s-a încheiat";
+}
+function popValue(id){
+  const el=$(id);if(!el)return;
+  el.classList.remove("value-pop");void el.offsetWidth;el.classList.add("value-pop");
+  setTimeout(()=>el.classList.remove("value-pop"),430);
+}
+
+function renderResult(s){
+  const finished=["round_finished","round_draw","game_finished"].includes(s.status);
+  $("resultOverlay").classList.toggle("hidden",!finished);
+  if(!finished||!s.roundResult)return;
+  const q=s.roundResult;
+  $("resultKicker").textContent=s.status==="game_finished"?"Final de partidă":"Final de rundă";
+  $("resultTitle").textContent=q.draw?"Egalitate":s.status==="game_finished"?"Partida s-a terminat":q.winner===s.player?"Runda ta":"Runda adversarului";
+  $("resultScore").textContent="A "+q.points[0]+" – "+q.points[1]+" B";
+  $("resultNote").textContent=q.draw?"Joc dublu.":q.septica?"Șeptică: +2 la rundă.":q.double?"Runda dublată.":"Punctele au fost acordate la finalul rundei.";
+  const canNext=s.player===0;
+  $("resultNext").classList.toggle("hidden",!canNext);
+  $("resultNext").disabled=!canNext;
+}
+const COLLECTION_HOLD_MS=2100;let collectionTimer=0,collectionToken=0;
+function animateMotion(element,keyframes,options){
+  if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches){
+    const {offset,easing,composite,...finalFrame}=keyframes[keyframes.length-1]||{};
+    for(const [property,value] of Object.entries(finalFrame))if(property in element.style)element.style[property]=String(value);
+    return {finished:Promise.resolve()};
+  }
+  const speed=uiTuning.motionSpeed||1;
+  return element.animate(keyframes,{...options,duration:(options.duration||0)/speed,delay:(options.delay||0)/speed,easing:SepticaUiTuning.easings[uiTuning.easing]||options.easing});
+}
+function cardValue(card){return String(typeof card==="object"&&card?card.rank:card)}
+function sequenceStarter(s){
+  if(!s||!s.sequence||!s.sequence.length||!Number.isInteger(s.turn))return null;
+  return s.sequence.length%2===0?s.turn:1-s.turn;
+}
+function cardPlayableForClient(s,card){
+  if(!s||s.status!=="playing"||s.turn!==s.player)return false;
+  if(s.sequence.length>=2&&s.starter===s.player)return cardValue(card)===cardValue(s.sequence[0])||cardValue(card)==="7";
+  return true;
+}
+function canTakeForClient(s){return Boolean(s&&s.status==="playing"&&s.turn===s.player&&s.sequence.length>=2&&s.starter===s.player)}
+function legalHandForClient(s){return (s?.hand||[]).filter(card=>cardPlayableForClient(s,card))}
+function renderSequence(seq){
+  if(!seq.length)return '<span class="empty">Nicio secvență activă</span>';
+  return seq.map((c,i)=>'<div class="seq '+suitClass(visualSuit(c,i,seq))+(i===seq.length-1?' fresh':'')+'" data-card-id="'+c.id+'" data-seq-index="'+i+'">'+cardFaceMarkup(c,i,seq)+'</div>').join('');
+}
+function fxRemove(el,delay=0){setTimeout(()=>{if(el&&el.parentNode)el.remove()},delay)}
+function makeImpact(x,y){const n=document.createElement("div");n.className="fx-impact";n.style.left=x+"px";n.style.top=y+"px";$("fxLayer").appendChild(n);fxRemove(n,520)}
+function findSequenceTargetRect(){
+  const seq=$("sequence");if(!seq)return null;
+  const ghost=document.createElement("div");
+  ghost.className="seq";
+  ghost.style.position="absolute";
+  ghost.style.left="50%";
+  ghost.style.top="50%";
+  ghost.style.transform="translate(-50%,-50%)";
+  ghost.style.visibility="hidden";
+  ghost.style.pointerEvents="none";
+  ghost.innerHTML="";
+  seq.appendChild(ghost);
+  const rect=ghost.getBoundingClientRect();
+  ghost.remove();
+  return rect;
+}
+function animatePlayedCard(cardEl,card,onLand=()=>{}){
+  const art=cardEl&&cardEl.querySelector(".card-art"),target=$("sequence");
+  if(!art||!target||!pendingPlayFx||pendingPlayFx.cardId!==card.id)return false;
+  const a=art.getBoundingClientRect(),t=findSequenceTargetRect();if(!t)return false;
+  const generation=fxGeneration;
+  pendingPlayFx={cardId:card.id,rank:String(card.rank),started:performance.now()};
+  $("hand").classList.add("locked");
+  cardEl.classList.add("play-source");
+  const clone=document.createElement("div");clone.className="card fx-flight-card";
+  clone.style.left=a.left+"px";clone.style.top=a.top+"px";clone.style.width=a.width+"px";clone.style.height=a.height+"px";
+  const face=art.cloneNode(true);face.className="card-art";clone.appendChild(face);$("fxLayer").appendChild(clone);
+  const dx=t.left+t.width/2-(a.left+a.width/2),dy=t.top+t.height/2-(a.top+a.height/2);
+  animateMotion(clone,[
+    {transform:"translate3d(0,0,0) rotate(0deg) scale(1)",opacity:1},
+    {transform:"translate3d("+(dx*.52)+"px,"+(dy*.48-9)+"px,0) rotate(-2deg) scale(.98)",opacity:1,offset:.52},
+    {transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(0deg) scale(.88)",opacity:1}
+  ],{duration:430,easing:"cubic-bezier(.2,.75,.25,1)",fill:"forwards"}).finished.then(()=>{
+    if(generation===fxGeneration){makeImpact(t.left+t.width/2,t.top+t.height/2);sound("land");onLand()}fxRemove(clone,20);
+  }).catch(()=>{if(generation===fxGeneration)onLand();fxRemove(clone)});
+  return true;
+}
+function pulseDeck(){
+  const deck=document.querySelector(".deck-stack");
+  if(!deck)return;
+  deck.classList.remove("dealing");void deck.offsetWidth;deck.classList.add("dealing");
+  setTimeout(()=>deck.classList.remove("dealing"),520);
+}
+function flashAt(x,y){
+  const n=document.createElement("div");n.className="card-shine";n.style.left=x+"px";n.style.top=y+"px";$("fxLayer").appendChild(n);fxRemove(n,460);
+}
+function animateDrawToHand(previousHand,newHand){
+  if(!previousHand||previousHand.length>=newHand.length)return;
+  const deckNode=document.querySelector(".deck-stack span:last-child"),hand=$("hand");
+  if(!deckNode||!hand)return;
+  const deckRect=deckNode.getBoundingClientRect(),generation=fxGeneration;pulseDeck();
+  const oldIds=new Set(previousHand.map(c=>c.id));
+  const added=[];newHand.forEach((c,i)=>{if(!oldIds.has(c.id))added.push(i)});
+  added.forEach((idx,n)=>{
+    const target=hand.children[idx];if(!target)return;
+    const tr=target.getBoundingClientRect();target.classList.add("draw-target");
+    const shell=document.createElement("div");shell.className="card fx-flight-card";shell.style.left=deckRect.left+"px";shell.style.top=deckRect.top+"px";shell.style.width=deckRect.width+"px";shell.style.height=deckRect.height+"px";
+    const art=document.createElement("img");art.className="card-art";art.src="/cards/card-back.svg";art.alt="";art.draggable=false;shell.appendChild(art);$("fxLayer").appendChild(shell);
+    const dx=tr.left+tr.width/2-(deckRect.left+deckRect.width/2),dy=tr.top+tr.height/2-(deckRect.top+deckRect.height/2);
+    const face=cardAssetPath(newHand[idx],idx,newHand),flipAt=setTimeout(()=>{if(generation===fxGeneration){art.src=face;flashAt(tr.left+tr.width*.55,tr.top+tr.height*.46)}},155+n*28);
+    animateMotion(shell,[
+      {transform:"translate3d(0,0,0) rotate(0deg) scale(1)",opacity:1},
+      {transform:"translate3d("+(dx*.56)+"px,"+(dy*.5-8)+"px,0) rotate("+(n%2?-2:2)+"deg) scale(.94)",opacity:1,offset:.56},
+      {transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(0deg) scale("+Math.min(.88,tr.width/deckRect.width)+")",opacity:1}
+    ],{duration:340,easing:"cubic-bezier(.2,.75,.25,1)",delay:n*42,fill:"forwards"}).finished.then(()=>{
+      clearTimeout(flipAt);target.classList.remove("draw-target");target.classList.add("draw-arrival");setTimeout(()=>target.classList.remove("draw-arrival"),260);fxRemove(shell,30);sound("land");
+    }).catch(()=>{clearTimeout(flipAt);target.classList.remove("draw-target");fxRemove(shell)});
+  });
+  if(added.length){$("deckVisual").classList.remove("draw-flash");void $("deckVisual").offsetWidth;$("deckVisual").classList.add("draw-flash")}
+}
+function animateHandReflow(previousRects){
+  if(!previousRects||!previousRects.size)return;
+  const hand=$("hand");[...hand.children].forEach(el=>{
+    const key=el.dataset.handId,old=previousRects.get(key);if(!old)return;
+    const r=el.getBoundingClientRect(),dx=old.left-r.left,dy=old.top-r.top;
+    if(Math.abs(dx)<1&&Math.abs(dy)<1)return;
+    el.classList.add("hand-reflow");
+    animateMotion(el,[{transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(var(--fan,0deg))"},{transform:"translate3d(0,0,0) rotate(var(--fan,0deg))"}],{duration:320,easing:"cubic-bezier(.18,.9,.2,1)",fill:"forwards"}).finished.then(()=>el.classList.remove("hand-reflow")).catch(()=>el.classList.remove("hand-reflow"));
+  });
+}
+function animateOpponentDraw(previousCount,newCount){
+  if(previousCount===null||newCount<=previousCount)return;
+  const deckNode=document.querySelector(".deck-stack span:last-child"),opp=$("opp");if(!deckNode||!opp)return;
+  const deckRect=deckNode.getBoundingClientRect(),added=newCount-previousCount;pulseDeck();
+  [...opp.children].slice(-added).forEach((target,n)=>{
+    const tr=target.getBoundingClientRect();target.style.opacity="0";const shell=document.createElement("div");shell.className="card fx-flight-card";shell.style.left=deckRect.left+"px";shell.style.top=deckRect.top+"px";shell.style.width=deckRect.width+"px";shell.style.height=deckRect.height+"px";
+    const art=document.createElement("img");art.className="card-art";art.src="/cards/card-back.svg";art.alt="";art.draggable=false;shell.appendChild(art);$("fxLayer").appendChild(shell);
+    const dx=tr.left+tr.width/2-(deckRect.left+deckRect.width/2),dy=tr.top+tr.height/2-(deckRect.top+deckRect.height/2);
+    animateMotion(shell,[{transform:"translate3d(0,0,0) rotate(0deg) scale(1)",opacity:1},{transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(0deg) scale(.58)",opacity:1}],{duration:300,easing:"cubic-bezier(.2,.75,.25,1)",delay:n*35,fill:"forwards"}).finished.then(()=>{target.style.opacity="1";fxRemove(shell,25)}).catch(()=>{target.style.opacity="1";fxRemove(shell)});
+  });
+}
+
+function animateOpponentReveal(card,index,items,targetNode,onLand=()=>{}){
+  const source=document.querySelector(".deck-stack span:last-child"),target=$("sequence");if(!source||!target)return;
+  const a=source.getBoundingClientRect(),t=target.getBoundingClientRect(),generation=fxGeneration,wrap=document.createElement("div");wrap.className="card fx-flight-wrap";wrap.style.left=a.left+"px";wrap.style.top=a.top+"px";wrap.style.width=a.width+"px";wrap.style.height=a.height+"px";
+  const back=document.createElement("img");back.className="card-art";back.src="/cards/card-back.svg";back.alt="";back.draggable=false;wrap.appendChild(back);$("fxLayer").appendChild(wrap);
+  if(targetNode)targetNode.style.opacity="0";
+  const dx=t.left+t.width/2-(a.left+a.width/2),dy=t.top+t.height/2-(a.top+a.height/2);let swapped=false;
+  const animation=animateMotion(wrap,[
+    {transform:"translate3d(0,0,0) rotate(0deg) rotateY(0deg) scale(1)",opacity:1},
+    {transform:"translate3d("+(dx*.5)+"px,"+(dy*.5-8)+"px,0) rotate(-2deg) rotateY(78deg) scale(.92)",opacity:1,offset:.5},
+    {transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(0deg) rotateY(0deg) scale(.80)",opacity:1}
+  ],{duration:390,easing:"cubic-bezier(.2,.75,.25,1)",fill:"forwards"});
+  const flipTimer=setTimeout(()=>{if(generation===fxGeneration&&!swapped){swapped=true;back.src=cardAssetPath(card,index,items)}},185);
+  animation.finished.then(()=>{clearTimeout(flipTimer);if(generation===fxGeneration){if(targetNode){targetNode.style.opacity="1";targetNode.classList.add("draw-arrival");setTimeout(()=>targetNode.classList.remove("draw-arrival"),260)}makeImpact(t.left+t.width/2,t.top+t.height/2);sound("land");onLand()}fxRemove(wrap,80)}).catch(()=>{clearTimeout(flipTimer);if(generation===fxGeneration&&targetNode)targetNode.style.opacity="1";if(generation===fxGeneration)onLand();fxRemove(wrap)});
+}
+function animateCollection(seq,winner){
+  const container=$("sequence"),nodes=[...container.querySelectorAll(".seq")],target=winner===0?$("pileAVisual"):winner===1?$("pileBVisual"):null;if(!target||!nodes.length)return;
+  const tr=target.getBoundingClientRect(),tx=tr.left+tr.width/2,ty=tr.top+tr.height/2;
+  const glow=document.createElement("div");glow.className="collection-glow";glow.style.left=tx+"px";glow.style.top=ty+"px";$("fxLayer").appendChild(glow);fxRemove(glow,980);
+  nodes.forEach((node,i)=>{
+    const art=node.querySelector(".card-art");if(!art)return;
+    const r=art.getBoundingClientRect(),clone=document.createElement("div");clone.className="card fx-collect-card";clone.style.left=r.left+"px";clone.style.top=r.top+"px";clone.style.width=r.width+"px";clone.style.height=r.height+"px";
+    const face=art.cloneNode(true);face.className="card-art";clone.appendChild(face);$("fxLayer").appendChild(clone);
+    const dx=tx-(r.left+r.width/2),dy=ty-(r.top+r.height/2),scale=Math.min(.48,Math.max(.38,Math.min(48/r.width,64/r.height))),side=i%2?-1:1;
+    const arcX=dx*.52+side*5,arcY=dy*.52-7;
+    animateMotion(clone,[
+      {transform:"translate3d(0,0,0) rotate(0deg) scale(1)",opacity:1},
+      {transform:"translate3d("+arcX+"px,"+arcY+"px,0) rotate("+(side*2)+"deg) scale(.94)",opacity:1,offset:.52},
+      {transform:"translate3d("+dx+"px,"+dy+"px,0) rotate(0deg) scale("+scale+")",opacity:0}
+    ],{duration:uiTuning.collectionMs,easing:"cubic-bezier(.2,.75,.25,1)",delay:i*42,fill:"forwards"}).finished.then(()=>fxRemove(clone,25)).catch(()=>fxRemove(clone));
+  });
+  container.classList.add("collection-flying");
+  sound("collect");
+}
+function animateTakeFromTable(winner){
+  const seq=$("sequence");if(!seq)return;
+  animateCollection([...seq.querySelectorAll(".seq")].map(x=>x),winner);
+}
+function updateScoreLabels(s){
+  const you=s.small[s.player],opp=s.small[1-s.player];
+  $("smallYou").textContent=you;$("smallOpp").textContent=opp;
+  $("scoreLeftLabel").textContent="TU";$("scoreRightLabel").textContent="ADVERSAR";
+  $("officialRoundScore").textContent="A "+s.small[0]+" – "+s.small[1]+" B";
+  $("gameScore").textContent="A "+s.big[0]+" – "+s.big[1]+" B";
+}
+function renderState(s){
+  const previous=lastState;
+  const initialDeal=Boolean(previous&&previous.status==="waiting"&&s.status==="playing"&&(!previous.hand||previous.hand.length===0));
+  if(previous){fxGeneration++;$("fxLayer").replaceChildren();clearTimeout(collectionTimer);collectionTimer=0}
+  const ownTurn=s.status==="playing"&&s.players?.[0]&&s.players?.[1]&&s.turn===s.player;
+  const aDelta=s.pileCounts[0]-((previous&&previous.pileCounts&&previous.pileCounts[0])||0);
+  const bDelta=s.pileCounts[1]-((previous&&previous.pileCounts&&previous.pileCounts[1])||0);
+  const collecting=Boolean(previous&&previous.sequence&&previous.sequence.length&&!s.sequence.length);
+  const winner= aDelta>0 ? 0 : bDelta>0 ? 1 : null;
+  const token=++collectionToken;
+  const resolvedSequence=collecting&&s.lastAction?.type==="play"&&s.lastAction.sequence?.length?s.lastAction.sequence:previous?.sequence||[];
+  const displaySequence=collecting?resolvedSequence:s.sequence;
+  let acceptedPlay=false;
+
+  if(previous){
+    const becameMyTurn=ownTurn&&!(previous.status==="playing"&&previous.turn===previous.player);
+    const cardAdded=s.sequence.length>previous.sequence.length;
+    const finished=["round_finished","round_draw","game_finished"].includes(s.status)&&!["round_finished","round_draw","game_finished"].includes(previous.status);
+    if(becameMyTurn){primeAudio();sound("turn");toast("Este rândul tău","gold")}
+    else if(cardAdded){primeAudio();sound("card")}
+    else if(finished){primeAudio();sound("finish")}
+  }
+
+  lastState=s;show();
+  $("code").textContent=s.room;$("me").textContent=s.player?"B":"A";$("round").textContent=s.round;
+  $("oppAvatar").textContent=s.player?"A":"B";$("oppRole").textContent=s.player?"Jucător A":"Jucător B";$("selfAvatar").textContent=s.player?"B":"A";$("selfRole").textContent=s.player?"Jucător B":"Jucător A";
+  $("deck").textContent=s.deck;$("deckVisual").textContent=s.deck;
+  const scoreChanged=Boolean(previous&&(previous.small[0]!==s.small[0]||previous.small[1]!==s.small[1]||previous.big[0]!==s.big[0]||previous.big[1]!==s.big[1]));
+  updateScoreLabels(s);
+  if(scoreChanged){$("score-card").classList.remove("score-change");void $("score-card").offsetWidth;$("score-card").classList.add("score-change")}
+  $("oppCount").textContent=s.opponentCount;
+  const previousHandRects=new Map(previous&&$("hand")?[...$("hand").children].map(el=>[el.dataset.handId,el.getBoundingClientRect()]):[]);
+  const opponentIncreased=Boolean(previous&&s.opponentCount>previous.opponentCount);
+  if(previous&&s.hand&&pendingPlayFx&&!s.hand.some(card=>card.id===pendingPlayFx.cardId)){
+    acceptedPlay=true;
+    const card=previous.hand?.find(c=>c.id===pendingPlayFx.cardId);
+    const flightStarted=Boolean(card&&pendingPlayFx.sourceEl&&animatePlayedCard(pendingPlayFx.sourceEl,card,()=>{
+      const landed=$('sequence').querySelector('[data-card-id="'+card.id+'"]');if(landed)landed.style.opacity="1";
+      if(collecting){setTimeout(()=>{if(collectionToken===token)animateCollection(displaySequence,winner)},uiTuning.revealHoldMs)}
+    }));
+    if(collecting&&!flightStarted)setTimeout(()=>{if(collectionToken===token)animateCollection(displaySequence,winner)},uiTuning.revealHoldMs);
+    pendingPlayFx=null;$('hand').classList.remove('locked');
+  }
+  $("opp").innerHTML=Array.from({length:s.opponentCount},(_,i)=>'<div class="card'+(initialDeal?' deal-in initial-deal':'')+'" style="--card-index:'+i+'" aria-hidden="true"><img class="back-card-art" src="/cards/card-back.svg" alt="" draggable="false"></div>').join("");
+
+  $("hand").innerHTML=s.hand.map((c,i)=>{
+    const rank=cardValue(c);
+    const playable=cardPlayableForClient(s,c);
+    const fresh=initialDeal;
+    const stateClass=playable?"active-card":"disabled";
+    return '<div class="card '+stateClass+(ownTurn&&legalHandForClient(s).length===1&&playable?' forced-choice':'')+(fresh?' deal-in':'')+(ownTurn&&!playable?' blocked':'')+'" style="--card-index:'+i+'" data-card-id="'+c.id+'" data-rank="'+rank+'" data-playable="'+(playable?'1':'0')+'" data-hand-id="'+c.id+'" role="button" tabindex="'+(playable?'0':'-1')+'" aria-disabled="'+(!playable)+'" aria-label="Joacă '+rank+' de '+visualSuit(c,i,s.hand)+'">'+cardFaceMarkup(c,i,s.hand)+'</div>';
+  }).join("");
+
+  [...$("hand").children].forEach(x=>{
+    x.addEventListener("pointerdown",()=>{if(x.dataset.playable==="1")x.classList.add("pressing")},{passive:true});
+    x.addEventListener("pointerup",()=>x.classList.remove("pressing"),{passive:true});
+    x.addEventListener("pointercancel",()=>x.classList.remove("pressing"),{passive:true});
+    x.onclick=()=>{
+      if(!ownTurn||x.dataset.playable!=="1"||pendingPlayFx)return;
+      primeAudio();
+      const cardId=x.dataset.cardId,card=s.hand.find(c=>c.id===cardId);if(!card)return;
+      pendingPlayFx={cardId,sourceEl:x};$('hand').classList.add('locked');
+      demoMode?advanceDemo():socket.emit("play_card",cardId);
+    };
+    x.onkeydown=e=>{
+      if(ownTurn&&x.dataset.playable==="1"&&(e.key==="Enter"||e.key===" ")&&!pendingPlayFx){
+        e.preventDefault();primeAudio();
+        const cardId=x.dataset.cardId,card=s.hand.find(c=>c.id===cardId);if(!card)return;
+        pendingPlayFx={cardId,sourceEl:x};$('hand').classList.add('locked');
+        demoMode?advanceDemo():socket.emit("play_card",cardId);
+      }
+    };
+  });
+
+  $("sequence").innerHTML=renderSequence(displaySequence);
+  if(acceptedPlay&&pendingPlayFx===null){const id=previous.hand.find(c=>!s.hand.some(n=>n.id===c.id))?.id;const landed=id&&$('sequence').querySelector('[data-card-id="'+id+'"]');if(landed)landed.style.opacity="0"}
+  if(collecting&&pendingTakeFx){pendingTakeFx=false;sound("take");setTimeout(()=>{if(collectionToken===token)animateCollection(displaySequence,winner)},uiTuning.revealHoldMs)}
+  else if(collecting&&!acceptedPlay){
+    const opponentClosedSequence=s.lastAction?.type==="play"&&previous?.turn!==s.player&&displaySequence.length;
+    if(opponentClosedSequence){const finalCard=s.lastAction.card,targetNode=$('sequence').querySelector('[data-card-id="'+finalCard.id+'"]');animateOpponentReveal(finalCard,displaySequence.length-1,displaySequence,targetNode,()=>setTimeout(()=>{if(collectionToken===token)animateCollection(displaySequence,winner)},uiTuning.revealHoldMs))}
+    else setTimeout(()=>{if(collectionToken===token)animateCollection(displaySequence,winner)},uiTuning.revealHoldMs)
+  }
+  $("sequence").classList.toggle("collecting-base",collecting);$("sequence").classList.toggle("collection-hold",collecting);$("sequence").classList.remove("collection-flying");
+  updateTurnRibbon(s,ownTurn,collecting);
+  if(!collecting&&previous&&s.sequence.length>previous.sequence.length&&previous.turn===1-s.player){
+    const justPlayed=s.sequence[s.sequence.length-1];
+    requestAnimationFrame(()=>animateOpponentReveal(justPlayed,s.sequence.length-1,s.sequence,$("sequence").querySelector(".seq:last-child")));
+  }
+  if(previous&&s.hand.length>previous.hand.length&&!initialDeal)requestAnimationFrame(()=>animateDrawToHand(previous.hand,s.hand));
+  if(previous&&s.hand.length===previous.hand.length)requestAnimationFrame(()=>animateHandReflow(previousHandRects));
+  if(previous&&s.opponentCount>previous.opponentCount&&!initialDeal)requestAnimationFrame(()=>animateOpponentDraw(previous.opponentCount,s.opponentCount));
+  if(collecting){
+    $("status").textContent=winner===s.player?"Tu iei cărțile.":winner===null?"Cărțile se strâng.":"Adversarul ia cărțile.";
+    $("statusSub").textContent="Vezi secvența înainte să dispară.";
+    clearTimeout(collectionTimer);
+    const collectionDuration=uiTuning.revealHoldMs+(180+uiTuning.collectionMs+Math.max(0,displaySequence.length-1)*42+200)/uiTuning.motionSpeed;
+    collectionTimer=setTimeout(()=>{if(collectionToken===token){$("sequence").innerHTML=renderSequence(s.sequence);$("sequence").classList.remove("collecting-base","collection-hold","collection-flying");$("statusSub").textContent=""}},collectionDuration);
+  }
+
+  const nextStatus=collecting?$("status").textContent:s.status==="waiting"?"Așteaptă adversarul.":s.status==="playing"?(!s.players?.[0]||!s.players?.[1]?"Adversarul se reconectează…":(ownTurn?"Este rândul tău.":"Rândul adversarului.")):s.roundResult?.draw?"Egalitate — joc dublu.":s.status==="game_finished"?"Partida s-a terminat.":"Runda s-a terminat.";
+  if($("status").textContent!==nextStatus){$("status").classList.remove("status-pop");void $("status").offsetWidth;$("status").classList.add("status-pop")}
+  $("status").textContent=nextStatus;
+  if(!collecting)$("statusSub").textContent=ownTurn?(legalHandForClient(s).length===1&&!canTakeForClient(s)?"Singura carte legală — este evidențiată.":($("take").disabled?"Alege o carte.":"Alege o carte sau apasă IA-LE.")): "";
+  $("oppTurn").classList.toggle("active",s.status==="playing"&&s.turn===1-s.player);
+  $("selfPlayerCard").classList.toggle("active",ownTurn);$("selfTurnDot").classList.toggle("active",ownTurn);
+  $("oppPlayerCard").classList.toggle("active",s.status==="playing"&&s.turn===1-s.player);
+  $("pileAVisualCount").textContent=s.pileCounts[0];$("pileBVisualCount").textContent=s.pileCounts[1];
+
+
+  $("pileAVisualPoints").textContent=s.pilePoints[0]+"p";$("pileBVisualPoints").textContent=s.pilePoints[1]+"p";
+
+
+  $("game").classList.toggle("game-turn",ownTurn);
+  $("take").disabled=!canTakeForClient(s)||pendingTakeFx;
+  const showNext=["round_finished","round_draw","game_finished"].includes(s.status);
+  $("next").classList.toggle("hidden",!showNext);$("next").disabled=s.player!==0;
+  $("log").textContent=s.log.join("\n");
+  if(collecting){
+    $("resultOverlay").classList.add("hidden");
+    setTimeout(()=>{if(collectionToken===token)renderResult(s)},COLLECTION_HOLD_MS);
+  }else{
+    renderResult(s);
+  }
+}
+
+$("demoLaunch").onclick=()=>{location.search="?demo=1"};
+$("demoStep").onclick=()=>{advanceDemo()};
+if(demoMode){setTimeout(()=>{renderDemo();},0);}
+if(inviteCode.length===5){$("roomCode").value=inviteCode;$("lobbyState").textContent="Invitație la o masă de Șeptică. Apasă «Intră» ca să te alături.";$("join").textContent="Intră la masă";}
+$("create").onclick=()=>socket.emit("create_room");$("createPve").onclick=()=>socket.emit("create_pve",$("aiDifficulty").value);$("qaLaunch").onclick=()=>{window.location.href="/qa.html"};
+$("join").onclick=joinRoom;$("joinSecondary").onclick=joinRoom;
+$("roomCode").addEventListener("keydown",e=>{if(e.key==="Enter")joinRoom()});
+$("copyRoom").onclick=async()=>{const code=$("code").textContent;try{await navigator.clipboard.writeText(code);$("copyRoom").textContent="copiat";setTimeout(()=>$("copyRoom").textContent="copiază",1200)}catch{$("copyRoom").textContent="selectează";setTimeout(()=>$("copyRoom").textContent="copiază",1200)}};$("shareRoom").onclick=async()=>{primeAudio();const code=$("code").textContent;const share={title:"Șeptică",text:"Hai la o partidă de Șeptică! Deschide invitația și intri direct la masa mea.",url:inviteUrl(code)};try{if(navigator.share){await navigator.share(share);toast("Invitația este gata","gold")}else{await navigator.clipboard.writeText(share.text+" "+share.url);toast("Invitația a fost copiată","gold")}}catch(e){if(e&&e.name!=="AbortError")toast("Nu am putut distribui invitația")}};
+function returnToMenu(){
+  sessionStorage.removeItem("septica-room");
+  let finished=false;
+  const go=()=>{if(finished)return;finished=true;location.assign(location.pathname)};
+  if(demoMode||!socket.connected){go();return}
+  socket.emit("leave_room",go);
+  setTimeout(go,300);
+}
+$("resultClose").onclick=returnToMenu;
+$("resultNext").onclick=()=>socket.emit("next_round");
+$("take").onclick=()=>{
+  primeAudio();
+  if(demoMode){sound("take");advanceDemo();return}
+  if(!canTakeForClient(lastState)||pendingTakeFx)return;
+  pendingTakeFx=true;$('take').disabled=true;
+  socket.emit("take");
+};$("next").onclick=()=>{primeAudio();if(demoMode){advanceDemo();return}socket.emit("next_round")};
+socket.on("connect",()=>{setConnection("",false);lobbyReady();const saved=sessionStorage.getItem("septica-room");if(!demoMode&&!inviteCode&&saved){try{const d=JSON.parse(saved);if(d?.code&&(d.player===0||d.player===1)&&d.mode!=="pve"){socket.emit("reconnect_room",d);return}}catch{sessionStorage.removeItem("septica-room")}}if(qaMode==="host"&&!qaJoinSent)setTimeout(()=>socket.emit("create_room"),120)});
+socket.on("disconnect",()=>{
+  setConnection("Conexiunea a fost pierdută. Reîncercăm…",true);
+  if(pendingPlayFx){pendingPlayFx=null;$("hand").classList.remove("locked")}
+  if(document.body.contains($("status"))) $("status").textContent="Reconectare la server…"
+});
+socket.on("connect_error",()=>setConnection("Nu ne putem conecta la server.",true));
+window.addEventListener("offline",()=>setConnection("Ești offline. Verificăm conexiunea…",true));
+window.addEventListener("online",()=>{if(socket.connected)setConnection("",false);else setConnection("Conexiunea revine…",true)});
+socket.on("room_created",d=>{me=d.player;sessionStorage.setItem("septica-room",JSON.stringify({code:d.code,player:me,mode:d.mode||"pvp"}));show();$("code").textContent=d.code;$("me").textContent="A";$("lobbyState").textContent=d.mode==="pve"?`Joacă împotriva AI · ${d.difficulty}`:qaMode==="host"?"QA host · cod transmis automat":"Așteaptă adversarul…";if(qaMode==="host"&&qaChannel)qaChannel.postMessage({type:"septica-qa-room",code:d.code})});
+socket.on("room_joined",d=>{me=d.player;sessionStorage.setItem("septica-room",JSON.stringify({code:d.code,player:me}));clearInviteUrl();show();$("code").textContent=d.code;$("me").textContent="B";$("lobbyState").textContent="Ai intrat la masă."});
+socket.on("room_rejoined",d=>{me=d.player;sessionStorage.setItem("septica-room",JSON.stringify({code:d.code,player:me}));show();$("code").textContent=d.code;$("me").textContent=me?"B":"A";$("lobbyState").textContent="Reconectat la masă."});
+socket.on("room_closed",()=>{sessionStorage.removeItem("septica-room");location.assign(location.pathname)});
+socket.on("error_message",m=>{
+  $("message").textContent=m;
+  pendingTakeFx=false;if(lastState)$('take').disabled=!canTakeForClient(lastState);
+  if(pendingPlayFx){
+    pendingPlayFx=null;
+    $("hand").classList.remove("locked");
+    const source=$("hand").querySelector(".play-source");if(source)source.classList.remove("play-source");
+  }
+});
+socket.on("opponent_disconnected",()=>{if(document.body.contains($("status"))) $("status").textContent="Adversarul s-a deconectat. Așteaptă reconectarea."});
+socket.on("state",s=>{if(!demoMode)renderState(s)});
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(error=>console.warn("[Șeptică] service worker indisponibil",error)));
+
+</script>
+</body></html>

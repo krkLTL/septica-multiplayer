@@ -1,12 +1,24 @@
 const VALUES = ["A", "K", "Q", "J", "10", "9", "8", "7"];
+const SUITS = ["clubs", "diamonds", "hearts", "spades"];
 const POINTS = new Set(["A", "10"]);
+
+function rankOf(card) { return typeof card === "string" ? card : card?.rank; }
+function sameCard(a, b) {
+  if (a && typeof a === "object") return Boolean(b && typeof b === "object" ? a.id === b.id : a.id === b);
+  return typeof b === "string" && a === b;
+}
+function findCard(hand, selection) {
+  const exact = hand.findIndex(card => sameCard(card, selection));
+  if (exact >= 0) return exact;
+  // Rank-only support keeps old offline diagnostic fixtures readable. The
+  // server and UI always send the stable physical-card ID.
+  return typeof selection === "string" ? hand.findIndex(card => rankOf(card) === selection) : -1;
+}
 
 function makeDeck() {
   const d = [];
 
-  for (const v of VALUES) {
-    for (let i = 0; i < 4; i++) d.push(v);
-  }
+  for (const rank of VALUES) for (const suit of SUITS) d.push(Object.freeze({ id: `${rank}:${suit}`, rank, suit }));
 
   for (let i = d.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -17,7 +29,7 @@ function makeDeck() {
 }
 
 function points(a) {
-  return a.reduce((n, c) => n + (POINTS.has(c) ? 1 : 0), 0);
+  return a.reduce((n, c) => n + (POINTS.has(rankOf(c)) ? 1 : 0), 0);
 }
 
 function totalCards(s) {
@@ -32,7 +44,15 @@ function totalCards(s) {
 }
 
 function assertInvariant(s) {
-  if (totalCards(s) !== 32) throw Error("CARD_INVARIANT");
+  const cards = [...s.deck, ...s.hands[0], ...s.hands[1], ...s.sequence, ...s.piles[0], ...s.piles[1]];
+  const physicalCards = cards.some(card => card && typeof card === "object");
+  if (cards.length !== 32) throw Error("CARD_INVARIANT");
+  if (physicalCards) {
+    const ids = cards.map(card => card && typeof card === "object" ? card.id : null);
+    if (ids.some(id => !id) || new Set(ids).size !== 32) throw Error("CARD_IDENTITY_INVARIANT");
+    if (cards.some(card => !VALUES.includes(card.rank) || !SUITS.includes(card.suit) || card.id !== `${card.rank}:${card.suit}`)) throw Error("CARD_IDENTITY_INVARIANT");
+  }
+  for (const rank of VALUES) if (cards.filter(card => rankOf(card) === rank).length !== 4) throw Error(`CARD_RANK_INVARIANT:${rank}`);
 }
 
 function newState() {
@@ -58,6 +78,7 @@ function newState() {
     // lastSequenceWinner = winner of the most recently resolved sequence.
     gameStarter: null,
     lastSequenceWinner: null,
+    lastAction: null,
 
     roundDouble: false,
     roundResult: null,
@@ -68,7 +89,7 @@ function newState() {
 
 function septicaWinner(s) {
   for (let p = 0; p < 2; p++) {
-    if (s.hands[p].filter(c => c === "7").length === 4) return p;
+    if (s.hands[p].filter(c => rankOf(c) === "7").length === 4) return p;
   }
   return null;
 }
@@ -79,6 +100,20 @@ function finishGame(s, winner, reason = "round") {
   s.small = [0, 0];
   s.game += 1;
   s.status = "game_finished";
+}
+
+function beginAfterSeptica(s, winner) {
+  s.small[winner] += 2;
+  if (s.small[winner] >= 3) {
+    s.big[winner] += 1;
+    s.small = [0, 0];
+    s.game += 1;
+    s.round = 1;
+    s.gameStarter = winner;
+  } else {
+    s.round += 1;
+  }
+  startRound(s, false, winner);
 }
 
 function startRound(s, doubleRound = false, startingPlayer = null) {
@@ -96,6 +131,7 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
   // nextRound() updates this field explicitly when a new game begins.
   if (s.gameStarter === null) s.gameStarter = s.turn;
   s.lastSequenceWinner = null;
+  s.lastAction = null;
 
   s.roundDouble = doubleRound;
   s.roundResult = null;
@@ -112,18 +148,7 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
 
   if (sw !== null) {
     s.septica = sw;
-    s.roundResult = {
-      points: [0, 0],
-      winner: sw,
-      draw: false,
-      double: doubleRound,
-      septica: true
-    };
-
-    s.small[sw] += 2;
-
-    if (s.small[sw] >= 3) finishGame(s, sw, "septica");
-    else s.status = "round_finished";
+    beginAfterSeptica(s, sw);
   }
 
   assertInvariant(s);
@@ -132,14 +157,16 @@ function startRound(s, doubleRound = false, startingPlayer = null) {
 function canPlay(s, p, c) {
   if (s.status !== "playing") return false;
   if (s.turn !== p) return false;
-  if (!s.hands[p].includes(c)) return false;
+  const index = findCard(s.hands[p], c);
+  if (index < 0) return false;
+  const selected = s.hands[p][index];
 
   // TĂIATUL may continue with the reper or 7.
   // A different card would be a concession by card, which is allowed
   // only for TĂIETORUL. TĂIATUL must say "Ia-le" instead.
   if (s.sequence.length >= 2 && s.starter === p) {
     const initial = s.sequence[0];
-    if (c !== initial && c !== "7") return false;
+    if (rankOf(selected) !== rankOf(initial) && rankOf(selected) !== "7") return false;
   }
 
   return true;
@@ -213,6 +240,14 @@ function finishSequence(s, w) {
 
   draw(s, w);
 
+  const sw = septicaWinner(s);
+  if (sw !== null) {
+    s.septica = sw;
+    beginAfterSeptica(s, sw);
+    assertInvariant(s);
+    return;
+  }
+
   if (
     !s.deck.length &&
     !s.hands[0].length &&
@@ -230,9 +265,10 @@ function finishSequence(s, w) {
 function playCard(s, p, c) {
   if (!canPlay(s, p, c)) throw Error("INVALID_MOVE");
 
-  const index = s.hands[p].indexOf(c);
-  s.hands[p].splice(index, 1);
-  s.sequence.push(c);
+  const index = findCard(s.hands[p], c);
+  const played = s.hands[p].splice(index, 1)[0];
+  s.sequence.push(played);
+  s.lastAction = { type: "play", card: played, sequence: [...s.sequence], winner: null };
 
   // First card starts the sequence.
   if (s.sequence.length === 1) {
@@ -241,13 +277,13 @@ function playCard(s, p, c) {
 
     assertInvariant(s);
 
-    return { kind: "start", player: p, card: c };
+    return { kind: "start", player: p, card: played };
   }
 
   const initial = s.sequence[0];
 
   // 7 or the initial value continues/cuts the sequence.
-  const cont = c === initial || c === "7";
+  const cont = rankOf(played) === rankOf(initial) || rankOf(played) === "7";
 
   // Any other card is a concession-by-card.
   // The player who played it has made the decision; there is no
@@ -257,11 +293,12 @@ function playCard(s, p, c) {
     const sequence = [...s.sequence];
 
     finishSequence(s, w);
+    if (s.lastAction) s.lastAction.winner = w;
 
     return {
       kind: "surrender",
       player: p,
-      card: c,
+      card: played,
       winner: w,
       sequence
     };
@@ -288,11 +325,12 @@ function playCard(s, p, c) {
     const sequence = [...s.sequence];
 
     finishSequence(s, w);
+    if (s.lastAction) s.lastAction.winner = w;
 
     return {
       kind: "continue",
       player: p,
-      card: c,
+      card: played,
       winner: w,
       sequence,
       final: true
@@ -326,6 +364,13 @@ function take(s, p) {
 
   const w = 1 - p;
   const sequence = [...s.sequence];
+
+  s.lastAction = {
+    type: "take",
+    sequence: [...sequence],
+    winner: w,
+    player: p
+  };
 
   finishSequence(s, w);
 
@@ -369,6 +414,8 @@ function nextRound(s) {
 
 module.exports = {
   makeDeck,
+  rankOf,
+  cardId: card => card && typeof card === "object" ? card.id : null,
   points,
   totalCards,
   assertInvariant,

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" role="img" aria-label="Ornament Șeptică">
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="65%">
+      <stop offset="0" stop-color="#efd58c" stop-opacity=".30"/>
+      <stop offset=".55" stop-color="#b98a35" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#07190d" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <ellipse cx="260" cy="90" rx="215" ry="64" fill="url(#g)"/>
+  <g fill="none" stroke="#d7b45c" stroke-opacity=".22" stroke-width="1.4">
+    <path d="M46 90c42-44 82-56 124-36 39 19 65 46 90 46s51-27 90-46c42-20 82-8 124 36"/>
+    <path d="M68 90c33-29 66-39 98-24 32 15 58 38 94 38s62-23 94-38c32-15 65-5 98 24"/>
+    <path d="M84 106c35 0 62-10 84-30 22-20 48-30 92-30s70 10 92 30c22 20 49 30 84 30"/>
+  </g>
+  <g fill="#d7b45c" fill-opacity=".34" font-family="Georgia,serif" font-weight="700" text-anchor="middle">
+    <text x="80" y="101" font-size="24">♠</text>
+    <text x="150" y="74" font-size="20">♣</text>
+    <text x="370" y="74" font-size="20">♦</text>
+    <text x="440" y="101" font-size="24">♥</text>
+  </g>
+  <text x="260" y="112" fill="#efd58c" fill-opacity=".18" font-family="Georgia,serif" font-size="78" font-weight="700" text-anchor="middle">Ș</text>
+</svg>

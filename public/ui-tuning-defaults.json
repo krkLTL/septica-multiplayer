@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "appWidth": 1900,
+  "handScale": 1,
+  "handOverlap": 10,
+  "pileScale": 1,
+  "motionSpeed": 1,
+  "revealHoldMs": 650,
+  "collectionMs": 690,
+  "easing": "smooth",
+  "felt1": "#16452b",
+  "felt2": "#0a2c1a",
+  "felt3": "#071c11",
+  "gold": "#d9b85f",
+  "goldHi": "#f4df9c"
+}

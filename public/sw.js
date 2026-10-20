@@ -1,4 +1,4 @@
-const CACHE_NAME = "septica-shell-v2";
+const CACHE_NAME = "septica-shell-v3";
 const SHELL = ["/", "/manifest.json", "/icons/septica-mark.svg", "/icons/septica-maskable.svg"];
 
 self.addEventListener("install", event => {
